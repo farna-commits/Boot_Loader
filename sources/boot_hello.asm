@@ -4,7 +4,8 @@
 ;********************************* Main Program **************************************
       xor ax, ax        ; Initialize ax to zero.
       mov ds, ax        ; store 0 in DS to set data segment to 0x0000.
-      mov si, msg       ; store the address of the string msg into si so we can use lodsb later.
+      mov si, msg   
+	  ; store the address of the string msg into si so we can use lodsb later.
       call bios_print   ; Call the bios_print subroutine to print msg on the screen. 
                         ; This will push the next address on the stack first.
       hang:             ; An infinite loop just in case interrupts are enabled. More on that later.
