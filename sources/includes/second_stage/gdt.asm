@@ -25,7 +25,7 @@ GDT64:
         db 10010011b
         db 00000000b
         db 0
-ALIGN 4                 ; for the address of GDT to be word aligned 
+    ALIGN 4                 ; for the address of GDT to be word aligned 
         dw 0
     .Pointer:
     dw $-GDT64 - 1      ;limit of GDT 

@@ -1,6 +1,7 @@
 %define PAGE_TABLE_BASE_ADDRESS 0x0000
 %define PAGE_TABLE_BASE_OFFSET 0x1000
-%define PAGE_TABLE_EFFECTIVE_ADDRESS 0x1000
+%define PAGE_TABLE_EFFECTIVE_ADDRESS 0x10000
+/*%define PAGE_TABLE_EFFECTIVE_ADDRESS 0x1000 */
 %define PAGE_PRESENT_WRITE 0x3  /* same as 011b */
 %define MEM_PAGE_4K         0x1000
 
@@ -43,7 +44,7 @@ build_page_table:
         add di, MEM_PAGE_4K                     ;set di as 0x1000
         mov eax, PAGE_PRESENT_WRITE             ;store 0x0003 in eax      
 
-.pte_loop:              ;loop to fill the 512 entries of the level 1 page table and to point to the 2MB 
+        .pte_loop:              ;loop to fill the 512 entries of the level 1 page table and to point to the 2MB 
         mov [es:di], eax                ;move the present value of eax (0x0003) into es:di 
         add eax, MEM_PAGE_4K            ;incriment eax by 0x1000
         add di, 0x8                     ;incriment di by 0x8
