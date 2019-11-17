@@ -9,7 +9,7 @@
 %define PDP_ADDRESS     0x101000
 %define PDT_ADDRESS     0x102000
 %define PTE_ADDRESS     0x103000
-%define PAGE_PRESENT_WRITE 0x3  /* same as 011b */
+%define PAGE_PRESENT_WRITE 0x3  /* same as 011b used to activate the page (flags)*/
 %define MEM_PAGE_4K         0x1000
 %define FIVE_TWELVE         0x200   /*tables entries size*/
 %define CELL                0x8     /*8 bytes of each cell*/
@@ -40,35 +40,34 @@ pusha
     .PML4_loop: 
 
         .PDP_loop:
+        ;this level will create 512 pdt tables to map 512 x 512 x 2mb = 512gb
+        ;zero the rax and rbx registers to use here
+        xor rax,rax
+        xor rbx,rbx 
+
+        mov rbx, qword[PDT_ptr]         ;move pdt pointer to rbx 
+        or rbx, PAGE_PRESENT_WRITE      ;or it to make it page active
+
+        mov rax, qword[PDP_ptr]         ;move pdp pointre to rax
+        mov [rax], rbx         ;let pdp  = pte ptr value
+
+        mov qword[PDT_counter], 0x0000  ;reset the pdt counter
+
 
             .PDT_loop:
-            ;this level will create 512 pte tables to map 512 x 2mb
+            ;this level will create 512 pte tables to map 512 x 2mb = 1gb
             ;zero the rax and rbx registers to use here
             xor rax,rax
             xor rbx,rbx           
 
-            add qword[PTE_accum_ptr], MEM_PAGE_4K       ;move to next pte table
+            mov rbx, qword[PTE_ptr]         ;move pte pointer to rbx 
+            or rbx, PAGE_PRESENT_WRITE      ;or it to make it page active
+
+            mov rax, qword[PDT_ptr]         ;move pte pointre to rax
+            mov [rax], rbx         ;let pdt  = pte ptr value
+
+
             mov qword[PTE_counter], 0x0000  ;reset the pte counter
-
-            ;move the PTE_accum_ptr to the normal PTE_ptr to fill the pte again with the same procedure
-            mov rbx, qword[PTE_accum_ptr]   ;move first into rax as we cant move directly
-            mov qword[PTE_ptr], rbx
-
-            add qword[PDT_ptr], CELL        ;incriment to next cell in pdt table
-            mov rax, qword[PDT_ptr]         ;move into rax the current cell in pdt table
-            
-            add rbx, PAGE_PRESENT_WRITE     ;add 3 to the pointer
-
-            mov [rax], rbx                  ;connect the current cell of pdt to a pte table
-
-            ;incriment counter 
-            add qword[PDT_counter], 0x0001       ;counter++
-
-
-
-
-
-
 
                 .PTE_loop:
                 ;map 2mb from memory
@@ -79,7 +78,7 @@ pusha
                 mov rax,  qword[PTE_ptr]    ;store in rax position of pte pointer
                 mov rbx,  qword[Physical_mem_ptr]   ;store in rbx the position of physical memory pointer
 
-                add rbx, PAGE_PRESENT_WRITE     ;add 3 to the physical memory pointer
+                or rbx, PAGE_PRESENT_WRITE     ;add 3 to the physical memory pointer
                 mov [rax], rbx                  ;connect the current cell of pte to the physical memory + 3
 
                 ;incriment addresses
@@ -93,11 +92,35 @@ pusha
                 cmp [PTE_counter], FIVE_TWELVE  ;check if counter for PTE reached 512
                 jl .PTE_loop            ;if still less continue looping
 
+            ;move physical memory ptr to pte ptr
+            xor rax,rax
+            xor rbx,rbx
 
+            mov rax,qword[Physical_mem_ptr]     ;load physical memory pointer into rax
+            mov qword[PTE_ptr], rax             ;pte pointer = physical memory pointer
+            add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
+            add qword[PDT_ptr], CELL        ;incriment to next cell in pdt table
+            ;incriment counter 
+            add qword[PDT_counter], 0x0001       ;counter++
 
+            ;check if the 512 cells are filled
             cmp [PDT_counter], FIVE_TWELVE      ;check if counter for PDT reached 512
             jl .PDT_loop                ;if still less conitnue looping
-        
+
+
+        ;move physical memory ptr to pdt ptr
+        xor rax,rax
+        xor rbx,rbx
+
+        mov rax,qword[Physical_mem_ptr]     ;load physical memory pointer into rax
+        mov qword[PDT_ptr], rax             ;pdt pointer = physical memory pointer
+
+        add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
+        add qword[PDP_ptr], CELL        ;incriment to next cell in pdt table
+        ;incriment counter 
+        add qword[PDP_counter], 0x0001       ;counter++
+
+        ;check if the 512 cells are filled
         cmp [PDP_counter], FIVE_TWELVE          ;check if counter for PDP reached 512
         jl .PDP_loop                    ;if still less continue looping
         
