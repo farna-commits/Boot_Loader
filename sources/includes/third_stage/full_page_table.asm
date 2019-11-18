@@ -12,7 +12,7 @@
 %define PAGE_PRESENT_WRITE 0x3  /* same as 011b used to activate the page (flags)*/
 %define MEM_PAGE_4K         0x1000
 %define FIVE_TWELVE         0x200   /*tables entries size*/
-%define CELL                0x8     /*8 bytes of each cell*/
+%define CELL                0x8     /*8 bytes of each cell*/     
 
 ;4 counters
 PML4_counter dw 0x0000               ;level 4      
@@ -27,13 +27,38 @@ PDP_ptr  dq PDP_ADDRESS
 PDT_ptr  dq PDT_ADDRESS
 PTE_ptr  dq PTE_ADDRESS         ;pointer for inside each pte
 PTE_accum_ptr   dq PTE_ADDRESS  ;pointer for choosing which pte are we in from the 512   
+Type_ptr     dq  PTE_ADDRESS 
+Mem_Regions_ptr   dq 0x21018      ;0x1018->memory regions table; 0x20000->memory regions information start at 0x20000
 
 
 ;define variable for physical memory initialized at 0
 Physical_mem_ptr   dq  0x0000
 
+
+check_region:
+add rcx,0x10        ;add the offset of 16 to access the type bits
+mov rdx, dw[rcx]    ;mov the value of pointer to a register
+add rcx, 0x8        ;add 8  (24-16) to move to next entry
+cmp rdx, 0x1        ;compare the value of pointer with 1 (type 1)
+je type1            ;go to label type1 in the 4 nested loops
+cmp rdx, 0x2        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
+cmp rdx, 0x3        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
+cmp rdx, 0x4        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
+jmp exit            ;if nothing of the 4 types exit
+
+
+
+
+
+
 page_table:
 pusha
+xor rcx,rcx
+xor rdx,rdx
+mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
     ;initialize the 4 page tables 
     ;we need to start after 1MB that was mapped in 2nd stage
     ;create the 4 loops: 
@@ -77,10 +102,13 @@ pusha
 
                 mov rax,  qword[PTE_ptr]    ;store in rax position of pte pointer
                 mov rbx,  qword[Physical_mem_ptr]   ;store in rbx the position of physical memory pointer
-
+                ;check if the types
+                jmp check_region
+                type1:
                 or rbx, PAGE_PRESENT_WRITE     ;add 3 to the physical memory pointer
                 mov [rax], rbx                  ;connect the current cell of pte to the physical memory + 3
 
+                continue1:
                 ;incriment addresses
                 add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
                 add qword[PTE_ptr], CELL                          ;incriment 1 cell in the pte table (8bytes)
@@ -102,6 +130,9 @@ pusha
             add qword[PDT_ptr], CELL        ;incriment to next cell in pdt table
             ;incriment counter 
             add qword[PDT_counter], 0x0001       ;counter++
+
+            ;update cr3
+            mov cr3,PML4_ADDRESS    
 
             ;check if the 512 cells are filled
             cmp [PDT_counter], FIVE_TWELVE      ;check if counter for PDT reached 512
@@ -127,6 +158,10 @@ pusha
     cmp [PML4_counter], FIVE_TWELVE             ;check if counter for PDP reached 512
     jl .PML4_loop                       ;if still less continue looping
 
+
+exit:
+;update cr3
+mov cr3,PML4_ADDRESS
 
 popa
 ret
