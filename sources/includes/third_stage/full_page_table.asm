@@ -18,7 +18,8 @@
 %define PAGE_PRESENT_WRITE 0x3  
 %define MEM_PAGE_4K         0x1000
 %define FIVE_TWELVE         0x200  
-%define CELL                0x8        
+%define CELL                0x8      
+%define Mem_Regions_ptr     0x21018  
 
 ;4 counters
 PML4_counter dw 0x0000               ;level 4      
@@ -34,7 +35,6 @@ PDT_ptr  dq PDT_ADDRESS
 PTE_ptr  dq PTE_ADDRESS         ;pointer for inside each pte
 PTE_accum_ptr   dq PTE_ADDRESS  ;pointer for choosing which pte are we in from the 512   
 Type_ptr     dq  PTE_ADDRESS 
-Mem_Regions_ptr   dq 0x21018      ;0x1018->memory regions table; 0x20000->memory regions information start at 0x20000
 
 
 ;define variable for physical memory initialized at 0
@@ -46,7 +46,7 @@ page_table:
 pushaq
 xor rcx,rcx
 xor rdx,rdx
-mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
+mov rcx, Mem_Regions_ptr        ;move 0x21018 to a reg
 ;     ;initialize the 4 page tables 
 ;     ;we need to start after 1MB that was mapped in 2nd stage
 ;     ;create the 4 loops: 
@@ -131,11 +131,6 @@ mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
             cmp dword[PDT_counter], FIVE_TWELVE      ;check if counter for PDT reached 512
             jl PDT_loop                ;if still less conitnue looping
 
-            ;update cr3
-            mov rdi,PML4_ADDRESS
-            mov rdx,rdi
-            mov cr3, rdx
-
 
         ;move physical memory ptr to pdt ptr
         xor rax,rax
@@ -152,16 +147,30 @@ mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
         ;check if the 512 cells are filled
         cmp dword[PDP_counter], FIVE_TWELVE          ;check if counter for PDP reached 512
         jl PDP_loop                    ;if still less continue looping
-        ;update cr3
-        mov rdi,PML4_ADDRESS
-        mov rdx,rdi
-        mov cr3, rdx
         
     cmp dword[PML4_counter], FIVE_TWELVE             ;check if counter for PDP reached 512
     jl PML4_loop                       ;if still less continue looping
 
 
 check_region:
+.loopCheck:
+mov r8, Mem_Regions_ptr  ;mov the address of the table
+mov r9, qword[r8]        ;getting base address (Start)
+mov r10,qword[r8+8]      ;getting length 
+add r10,r9               ;end = start + length
+cmp rbx, r9             ;compare page with start address
+jl .nextRow                ;if less go to this label
+cmp rbx,r10             ;if not compare with the end 
+jl .check_type          ;if less then im between start and end so go check the type
+
+.nextRow:
+add r8,24       ;move to the next row by adding 24 bytes
+cmp r9,r10      ;if start = end
+je exit         ;then i'm not in memory region table so exit the whole function
+
+jmp .loopCheck ;continue looping
+
+.check_type:        ;to check which type from 1->5 AFTER we made sure were between start and end
 add rcx,0x10        ;add the offset of 16 to access the type bits
 mov rdx, qword[rcx]    ;mov the value of pointer to a register
 add rcx, 0x8        ;add 8  (24-16) to move to next entry
@@ -173,13 +182,15 @@ cmp rdx, 0x3        ;compare the value of pointer with 1 (type 1)
 je continue1            ;go to label cont1 in the 4 nested loops
 cmp rdx, 0x4        ;compare the value of pointer with 1 (type 1)
 je continue1            ;go to label cont1 in the 4 nested loops
+cmp rdx, 0x5        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
 jmp exit            ;if nothing of the 4 types exit
 
 
 exit:
 ;update cr3
-; xor rdx,rdx
-; mov rdx,qword[PML4_ptr]
-; mov cr3, rdx
+xor rdx,rdx
+mov rdx,qword[PML4_ptr]
+;mov cr3, rdx
 popaq
 ret
