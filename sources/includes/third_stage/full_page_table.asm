@@ -4,15 +4,21 @@
 ;we will have 4 nested loops and each counter should reach 512 (0->511)
 ;64-bit registers will be used as we in the long mode and because addresses will be huge.
 
+
+%include "sources/includes/third_stage/pushaq.asm"
+
+
+
+
 ;define the addresses for each level that we set in the 2nd stage page table
 %define PML4_ADDRESS    0x100000
 %define PDP_ADDRESS     0x101000
 %define PDT_ADDRESS     0x102000
 %define PTE_ADDRESS     0x103000
-%define PAGE_PRESENT_WRITE 0x3  /* same as 011b used to activate the page (flags)*/
+%define PAGE_PRESENT_WRITE 0x3  
 %define MEM_PAGE_4K         0x1000
-%define FIVE_TWELVE         0x200   /*tables entries size*/
-%define CELL                0x8     /*8 bytes of each cell*/     
+%define FIVE_TWELVE         0x200  
+%define CELL                0x8        
 
 ;4 counters
 PML4_counter dw 0x0000               ;level 4      
@@ -35,38 +41,20 @@ Mem_Regions_ptr   dq 0x21018      ;0x1018->memory regions table; 0x20000->memory
 Physical_mem_ptr   dq  0x0000
 
 
-check_region:
-add rcx,0x10        ;add the offset of 16 to access the type bits
-mov rdx, dw[rcx]    ;mov the value of pointer to a register
-add rcx, 0x8        ;add 8  (24-16) to move to next entry
-cmp rdx, 0x1        ;compare the value of pointer with 1 (type 1)
-je type1            ;go to label type1 in the 4 nested loops
-cmp rdx, 0x2        ;compare the value of pointer with 1 (type 1)
-je continue1            ;go to label cont1 in the 4 nested loops
-cmp rdx, 0x3        ;compare the value of pointer with 1 (type 1)
-je continue1            ;go to label cont1 in the 4 nested loops
-cmp rdx, 0x4        ;compare the value of pointer with 1 (type 1)
-je continue1            ;go to label cont1 in the 4 nested loops
-jmp exit            ;if nothing of the 4 types exit
-
-
-
-
-
 
 page_table:
-pusha
+pushaq
 xor rcx,rcx
 xor rdx,rdx
 mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
-    ;initialize the 4 page tables 
-    ;we need to start after 1MB that was mapped in 2nd stage
-    ;create the 4 loops: 
-    .PML4_loop: 
+;     ;initialize the 4 page tables 
+;     ;we need to start after 1MB that was mapped in 2nd stage
+;     ;create the 4 loops: 
+     PML4_loop: 
 
-        .PDP_loop:
-        ;this level will create 512 pdt tables to map 512 x 512 x 2mb = 512gb
-        ;zero the rax and rbx registers to use here
+        PDP_loop:
+;         ;this level will create 512 pdt tables to map 512 x 512 x 2mb = 512gb
+;         ;zero the rax and rbx registers to use here
         xor rax,rax
         xor rbx,rbx 
 
@@ -79,7 +67,7 @@ mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
         mov qword[PDT_counter], 0x0000  ;reset the pdt counter
 
 
-            .PDT_loop:
+            PDT_loop:
             ;this level will create 512 pte tables to map 512 x 2mb = 1gb
             ;zero the rax and rbx registers to use here
             xor rax,rax
@@ -94,7 +82,7 @@ mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
 
             mov qword[PTE_counter], 0x0000  ;reset the pte counter
 
-                .PTE_loop:
+                PTE_loop:
                 ;map 2mb from memory
                 ;zero the rax(PTE) and rbx(Physical) registers to use here
                 xor rax,rax
@@ -117,51 +105,81 @@ mov rcx, qword[Mem_Regions_ptr]         ;move 0x21018 to a reg
                 add qword[PTE_counter], 0x0001                       ;counter ++
 
                 ;check if the 512 cells are filled
-                cmp [PTE_counter], FIVE_TWELVE  ;check if counter for PTE reached 512
-                jl .PTE_loop            ;if still less continue looping
-
+                cmp dword[PTE_counter], FIVE_TWELVE  ;check if counter for PTE reached 512
+                jl PTE_loop            ;if still less continue looping
+        
+            ;update cr3
+            mov rdi,PML4_ADDRESS
+            mov rdx,rdi
+            mov cr3, rdx
+        
             ;move physical memory ptr to pte ptr
             xor rax,rax
             xor rbx,rbx
 
-            mov rax,qword[Physical_mem_ptr]     ;load physical memory pointer into rax
-            mov qword[PTE_ptr], rax             ;pte pointer = physical memory pointer
-            add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
+            ; mov rax,qword[Physical_mem_ptr]     ;load physical memory pointer into rax
+            ; mov qword[PTE_ptr], rax             ;pte pointer = physical memory pointer
+            ; add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
+
+
             add qword[PDT_ptr], CELL        ;incriment to next cell in pdt table
             ;incriment counter 
             add qword[PDT_counter], 0x0001       ;counter++
 
-            ;update cr3
-            mov cr3,PML4_ADDRESS    
 
             ;check if the 512 cells are filled
-            cmp [PDT_counter], FIVE_TWELVE      ;check if counter for PDT reached 512
-            jl .PDT_loop                ;if still less conitnue looping
+            cmp dword[PDT_counter], FIVE_TWELVE      ;check if counter for PDT reached 512
+            jl PDT_loop                ;if still less conitnue looping
+
+            ;update cr3
+            mov rdi,PML4_ADDRESS
+            mov rdx,rdi
+            mov cr3, rdx
 
 
         ;move physical memory ptr to pdt ptr
         xor rax,rax
         xor rbx,rbx
 
-        mov rax,qword[Physical_mem_ptr]     ;load physical memory pointer into rax
-        mov qword[PDT_ptr], rax             ;pdt pointer = physical memory pointer
+        ; mov rax,qword[Physical_mem_ptr]     ;load physical memory pointer into rax
+        ; mov qword[PDT_ptr], rax             ;pdt pointer = physical memory pointer
+        ; add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
 
-        add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
         add qword[PDP_ptr], CELL        ;incriment to next cell in pdt table
         ;incriment counter 
         add qword[PDP_counter], 0x0001       ;counter++
 
         ;check if the 512 cells are filled
-        cmp [PDP_counter], FIVE_TWELVE          ;check if counter for PDP reached 512
-        jl .PDP_loop                    ;if still less continue looping
+        cmp dword[PDP_counter], FIVE_TWELVE          ;check if counter for PDP reached 512
+        jl PDP_loop                    ;if still less continue looping
+        ;update cr3
+        mov rdi,PML4_ADDRESS
+        mov rdx,rdi
+        mov cr3, rdx
         
-    cmp [PML4_counter], FIVE_TWELVE             ;check if counter for PDP reached 512
-    jl .PML4_loop                       ;if still less continue looping
+    cmp dword[PML4_counter], FIVE_TWELVE             ;check if counter for PDP reached 512
+    jl PML4_loop                       ;if still less continue looping
+
+
+check_region:
+add rcx,0x10        ;add the offset of 16 to access the type bits
+mov rdx, qword[rcx]    ;mov the value of pointer to a register
+add rcx, 0x8        ;add 8  (24-16) to move to next entry
+cmp rdx, 0x1        ;compare the value of pointer with 1 (type 1)
+je type1            ;go to label type1 in the 4 nested loops
+cmp rdx, 0x2        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
+cmp rdx, 0x3        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
+cmp rdx, 0x4        ;compare the value of pointer with 1 (type 1)
+je continue1            ;go to label cont1 in the 4 nested loops
+jmp exit            ;if nothing of the 4 types exit
 
 
 exit:
 ;update cr3
-mov cr3,PML4_ADDRESS
-
-popa
+; xor rdx,rdx
+; mov rdx,qword[PML4_ptr]
+; mov cr3, rdx
+popaq
 ret

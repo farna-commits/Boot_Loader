@@ -1,3 +1,10 @@
+        
+        mov si, a20_enabled_msg
+        call bios_print   
+
+        
+        
+        
         check_long_mode:
             pusha                           ; Save all general purpose registers on the stack
             call check_cpuid_support        ; Check if cpuid instruction is supported by the CPU

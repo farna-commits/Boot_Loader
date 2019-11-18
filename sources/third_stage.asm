@@ -1,5 +1,8 @@
 [ORG 0x10000]
 
+
+
+
 [BITS 64]
 
 
@@ -39,8 +42,13 @@ channel_loop:
 
 call init_idt
 call setup_idt
+call page_table
+
 mov rsi,hello_world_str
 call video_print
+
+
+
 
 kernel_halt: 
     hlt
@@ -55,6 +63,7 @@ kernel_halt:
       %include "sources/includes/third_stage/video.asm"
       %include "sources/includes/third_stage/pit.asm"
       %include "sources/includes/third_stage/ata.asm"
+      %include "sources/includes/third_stage/full_page_table.asm"
 
 ;*******************************************************************************************************************
 

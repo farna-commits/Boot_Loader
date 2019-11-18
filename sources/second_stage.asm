@@ -7,6 +7,8 @@ BITS 16
 %define M_REGIONS_SEGMENT           0x2000
 %define PTR_MEM_REGIONS_COUNT       0x0000
 %define PTR_MEM_REGIONS_TABLE       0x18
+%define THIRD_STAGE_OFFSET          0x10000      ; The offset where we should start loading the second stage boot loader
+%define THIRD_STAGE_CODE_SEG          0x1000      ; The offset where we should start loading the second stage boot loader
 ;********************************* Main Program **************************************
       call bios_cls
       mov si, greeting_msg    ; store the address of the string msg into si so we can use lodsb later.
@@ -19,8 +21,10 @@ BITS 16
       call get_key_stroke     ; Wait for key storke to jump to second boot stage
       call build_page_table   
       call disable_pic
-      call load_idt_descriptor
+     ; call load_idt_descriptor
       call switch_to_long_mode
+      
+      jmp THIRD_STAGE_OFFSET
       hang:                   ; An infinite loop just in case interrupts are enabled. More on that later.
             hlt               ; Halt will suspend the execution. This will not return unless the processor got interrupted.
             jmp hang          ; Jump to hang so we can halt again.
@@ -87,6 +91,8 @@ video_y db 0
       %include "sources/includes/second_stage/longmode.asm"
 
 ;**************************** Long Mode 64-bit  **********************************
+
+
 [BITS 64]
 
 LongModeEntry:

@@ -12,11 +12,14 @@ check_a20_gate:
     jc .error                               ;if carry flag is set then go to error
     ;print a flag to say that a20 was enabled 
     mov si, a20_enabled_msg
-    jmp .print
+    call .print
+    jmp .Exit
     ;then go check
     jmp check_a20_gate                      ;if error check the a20 gate
-    popa                                    ;Restore all general purpose registers from the stack
-    ret
+    ;popa                                    ;Restore all general purpose registers from the stack
+        mov si, a20_enabled_msg
+        call bios_print
+   ; ret
 
 
 ;if an error happened hang the cpu 
@@ -34,6 +37,9 @@ check_a20_gate:
 
     .print:
         call bios_print                     ;call the print 
-        jmp check_a20_gate                  ;loop again
+       ; jmp check_a20_gate                  ;loop again
+        ret
 
-
+.Exit:
+popa 
+ret
