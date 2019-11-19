@@ -21,7 +21,7 @@ BITS 16
       call get_key_stroke     ; Wait for key storke to jump to second boot stage
       call build_page_table   
       call disable_pic
-     ; call load_idt_descriptor
+      call load_idt_descriptor
       call switch_to_long_mode
       
       jmp THIRD_STAGE_OFFSET
