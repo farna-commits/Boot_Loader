@@ -43,13 +43,13 @@ channel_loop:
 call init_idt
 call setup_idt
 
-; mov rsi,hello_world_str
-; call video_print
+;  mov rsi,hello_world_str
+;  call video_print
 
 call page_table
 
-mov rsi,hello_world_str
-call video_print
+; mov rsi,hello_world_str
+; call video_print
 
 
 
