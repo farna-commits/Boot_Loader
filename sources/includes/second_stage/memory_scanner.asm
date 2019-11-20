@@ -1,6 +1,4 @@
 %define MEM_REGIONS_SEGMENT         0x2000
-;%define PTR_MEM_REGIONS_COUNT       0x0000 
-;%define PTR_MEM_REGIONS_TABLE       0x18
 %define PTR_MEM_REGIONS_COUNT       0x1000 
 %define PTR_MEM_REGIONS_TABLE       0x1018
 %define MEM_MAGIC_NUMBER            0x0534D4150                
