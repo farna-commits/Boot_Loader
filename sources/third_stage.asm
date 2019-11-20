@@ -42,14 +42,12 @@ channel_loop:
 
 call init_idt
 call setup_idt
+call page_table         ;call page table function 
 
-;  mov rsi,hello_world_str
-;  call video_print
 
-call page_table
-
-; mov rsi,hello_world_str
-; call video_print
+;test message to show that we made out elhamdulellah
+mov rsi,hello_world_str
+call video_print
 
 
 
@@ -67,7 +65,9 @@ kernel_halt:
       %include "sources/includes/third_stage/video.asm"
       %include "sources/includes/third_stage/pit.asm"
       %include "sources/includes/third_stage/ata.asm"
-      %include "sources/includes/third_stage/full_page_table.asm"
+      ;%include "sources/includes/third_stage/full_page_table.asm"
+      %include "sources/includes/third_stage/pagetable2.asm"
+      ;%include "sources/includes/third_stage/page3.asm"
 
 ;*******************************************************************************************************************
 
@@ -79,7 +79,11 @@ newline db 13,0
 end_of_string  db 13        ; The end of the string indicator
 start_location   dq  0x0  ; A default start position (Line # 8)
 
-    hello_world_str db 'Hello all here',13, 0   ;indication that we reached the third stage
+    hello_world_str db 'bypassed page table',13, 0   ;indication that we reached the third stage
+    hello_world_str2 db 'reached the end',13, 0   ;indication that we reached the third stage
+    hello_world_str3 db 'finished pdt loopp',13, 0   ;indication that we reached the third stage
+    hello_world_str4 db 'start pdt loopp',13, 0   ;indication that we reached the third stage
+    hello_world_str5 db '512 testt',13, 0   ;indication that we reached the third stage
 
     ata_channel_var dq 0
     ata_master_var dq 0
