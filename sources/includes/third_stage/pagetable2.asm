@@ -142,24 +142,21 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
                cmp qword[PTE_counter], FIVE_TWELVE ;check if counter for PTE reached 512
                jl PTE_loop            ;if still less continue looping
 
-          mov rax, qword[after_PTE_ptr]      
-          mov qword[PTE_ptr], rax
-          add qword[after_PTE_ptr], MEM_PAGE_4K
-          cmp qword[PDP_counter],0x0
-          jnz .skpload
+          mov rax, qword[after_PTE_ptr]           ;move into rax 0x104000
+          mov qword[PTE_ptr], rax                 ;connect pte ptr and after pte ptr
+          add qword[after_PTE_ptr], MEM_PAGE_4K   ;increment with 4kb, to reserve a page for next pte table 
 
           ;update cr3
           mov rax, qword[PML4_ptr]
           mov cr3,rax
-          .skpload:
+
           add qword[PDT_ptr], CELL                ;incriment to next cell in pdt table
           inc qword[PDT_counter]                  ;counter++
           cmp qword[PDT_counter], FIVE_TWELVE     ;check if counter reached 512
           jl PDT_loop                             ;if still less continue looping
-
-     mov rax, qword[after_PTE_ptr]                
-     mov qword[PDT_ptr],rax
-     add qword[after_PTE_ptr], MEM_PAGE_4K
+     mov rax, qword[after_PTE_ptr]                ;move into rax 0x104000         
+     mov qword[PDT_ptr],rax                       ;connect pte ptr and after pte ptr     
+     add qword[after_PTE_ptr], MEM_PAGE_4K        ;increment with 4kb, to reserve a page for next pte table   
 
      add qword[PDP_ptr], CELL                     ;incriment to next cell in pdp table
      inc qword[PDP_counter]                       ;counter++
