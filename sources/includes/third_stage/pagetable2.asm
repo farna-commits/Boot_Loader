@@ -124,8 +124,8 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
                cmp rax,rbx                       ;compare both, if page extracted greater than max then exit the whole file function
                je exit                           ;go to exit if reached max
 
-               cmp qword[Physical_mem_ptr],0x100000    ;check whether we are in the first 2mb (that was mapped by small ptable) or not
-               jle type1                           ;if yes we were less, we can't check the first 2mb (crash)
+               cmp qword[Physical_mem_ptr],0x100000    ;check whether we are in the first 1mb (that was mapped by small ptable) or not
+               jle type1                           ;if yes we were less, don't check as the first 1mb has our code as well as other stuff that isnt type 1 (VGA)
 
                jmp check_region                        ;go to label of check region, similar to calling a function
 

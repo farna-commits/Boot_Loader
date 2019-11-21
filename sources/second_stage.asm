@@ -22,7 +22,6 @@ BITS 16
       call disable_pic
       call video_cls_16       ;to clear after 2nd stage
       call load_idt_descriptor
-      
       call switch_to_long_mode
       jmp THIRD_STAGE_OFFSET  ;go to third stage
 

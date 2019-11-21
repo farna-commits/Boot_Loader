@@ -11,8 +11,11 @@
             xor eax,eax                         ;set eax=0
             mov edi, VIDEO_BUFFER_OFFSET         ;put in edi the end boundary
 
+
+
+            ;loop for putting spaces on the screen with a black background to clear the screen
             .loop1:
-            mov edx, ' '
+            mov edx, ' '                        
             mov [es:di],dx
             add di,1
             mov edx, 0x0F

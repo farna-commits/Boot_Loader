@@ -44,7 +44,7 @@ call init_idt
 call setup_idt
 call page_table         ;call page table function 
 
-;a code to test
+;Memory Tester Function
 mov r12,0
 mov rbx, qword[after_PTE_ptr]
 .testLoop:
@@ -54,6 +54,7 @@ inc rax
 mov byte[rax],13
 inc rax
 mov rsi, qword[after_PTE_ptr]
+
 ;call video_print
 
 inc r12
@@ -62,7 +63,7 @@ je gohere
 cmp rax, qword[max]
 jl .testLoop
 
-;test message to show that we made out elhamdulellah
+;test message to show that we mapped the whole memory to the max without page faults
 gohere:
 mov rsi,hello_world_str6
 call video_print
