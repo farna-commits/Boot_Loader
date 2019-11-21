@@ -19,10 +19,10 @@ BITS 16
       call print_memory_regions
       call get_key_stroke     ; Wait for key storke to jump to second boot stage
       call build_page_table   
-      ;call video_cls_16
       call disable_pic
+      call video_cls_16       ;to clear after 2nd stage
       call load_idt_descriptor
-      ;call bios_cls           ;to clear after 2nd stage
+      
       call switch_to_long_mode
       jmp THIRD_STAGE_OFFSET  ;go to third stage
 
@@ -73,6 +73,7 @@ long_mode_not_supported_msg db 'Long mode not supported !!!!',13,10,0
 memory_scan_failed_msg db 'Memory Scan Failed',13,10,0
 read_region_msg db 'read memory region',13,10,0
 pic_disabled_msg db 'PIC disabled',13,10,0
+pic_error_msg db 'Error in PIC disabling',13,10,0
 pml4_page_table_msg db 'PML4 page table created successfully',13,10,0
 video_x db 0
 video_y db 0

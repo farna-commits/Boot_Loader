@@ -11,20 +11,17 @@
             xor eax,eax                         ;set eax=0
             mov edi, VIDEO_BUFFER_OFFSET         ;put in edi the end boundary
 
-
-
-            mov eax, 1              ;input
-
-
-            ._loop:              ;loop to fill the 512 entries of the level 1 page table and to point to the 2MB 
-            mov [es:di], eax                ;move the present value of eax (0x0003) into es:di 
-            mov ebx, [es:di]
-            add di, 4                      ;incriment di by 0x8
-            ;Still missing here to print the number '4' we kept putting in memory using the special video instructions 
-            cmp ebx ,0x200000        ;check if all 2MB are mapped 
-            jl ._loop            ;if not, continue looping if yes then go retrieve regisetrs and return
-
-
+            .loop1:
+            mov edx, ' '
+            mov [es:di],dx
+            add di,1
+            mov edx, 0x0F
+            mov [es:di],dx
+            add di,1
+            mov edx, 0x02
+            mov [es:di],dx
+            cmp di, 0xFA0
+            jl .loop1
             popa                                ; Restore all general purpose registers from the stack
             ret
 

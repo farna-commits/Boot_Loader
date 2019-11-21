@@ -49,12 +49,12 @@ mov r12,0
 mov rbx, qword[after_PTE_ptr]
 .testLoop:
 mov rax,rbx
-mov byte[rax],'A'
+mov byte[rax],'T'
 inc rax
 mov byte[rax],13
 inc rax
 mov rsi, qword[after_PTE_ptr]
-call video_print
+;call video_print
 
 inc r12
 cmp r12,qword[max]
