@@ -141,10 +141,7 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
                inc qword[PTE_counter]                     ;counter ++
                cmp qword[PTE_counter], FIVE_TWELVE ;check if counter for PTE reached 512
                jl PTE_loop            ;if still less continue looping
-
-          mov rax, qword[after_PTE_ptr]           ;move into rax 0x104000
-          mov qword[PTE_ptr], rax                 ;connect pte ptr and after pte ptr
-          add qword[after_PTE_ptr], MEM_PAGE_4K   ;increment with 4kb, to reserve a page for next pte table 
+ 
 
           ;update cr3
           mov rax, qword[PML4_ptr]

@@ -42,33 +42,59 @@ channel_loop:
 
 call init_idt
 call setup_idt
-call page_table         ;call page table function 
+;call page_table         ;call page table function 
 
 ;Memory Tester Function
 mov r12,0
-mov rbx, qword[after_PTE_ptr]
-.testLoop:
-mov rax,rbx
-mov byte[rax],'T'
-inc rax
-mov byte[rax],13
-inc rax
-mov rsi, qword[after_PTE_ptr]
+;mov rbx, qword[after_PTE_ptr]   ;starting the test at location 0x104000
+; .testLoop:
+; mov rax,rbx
+; mov byte[rax],'T'
+; inc rax
+; mov byte[rax],13
+; inc rax
+; mov rsi, qword[after_PTE_ptr]
 
-;call video_print
+; call video_print               ;uncomment this to see a letter for each memory location
 
+; inc r12
+; cmp r12,3
+; je gohere
+; cmp rax, qword[max]
+; jl .testLoop
+mov rdi, 0xAAA
+looop:
+inc rdi
+call bios_print_hexa
+inc rdi
+call bios_print_hexa
 inc r12
-cmp r12,qword[max]
+cmp r12, 100
 je gohere
-cmp rax, qword[max]
-jl .testLoop
+jmp looop
 
 ;test message to show that we mapped the whole memory to the max without page faults
 gohere:
-mov rsi,hello_world_str6
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+mov rsi, memory_tester_success
 call video_print
-
-
+mov rdi,0xFFFFFFFFF
+call bios_print_hexa
+mov rsi, memory_tester_success
+call video_print
+mov rdi,0xFFFFFFFFF
+call bios_print_hexa
 
 
 kernel_halt: 
@@ -84,10 +110,8 @@ kernel_halt:
       %include "sources/includes/third_stage/video.asm"
       %include "sources/includes/third_stage/pit.asm"
       %include "sources/includes/third_stage/ata.asm"
-      ;%include "sources/includes/third_stage/full_page_table.asm"
       %include "sources/includes/third_stage/pagetable2.asm"
-      ;%include "sources/includes/third_stage/page3.asm"
-
+    
 ;*******************************************************************************************************************
 
 
@@ -103,7 +127,7 @@ start_location   dq  0x0  ; A default start position (Line # 8)
     hello_world_str3 db 'finished pdt loopp',13, 0   ;indication that we reached the third stage
     hello_world_str4 db 'start pdt loopp',13, 0   ;indication that we reached the third stage
     hello_world_str5 db '512 testt',13, 0   ;indication that we reached the third stage
-    hello_world_str6 db 'Memory Tester Succeed',13, 0   ;indication that we reached the third stage
+    memory_tester_success db 'Memory Tester Succeeded!',13, 0   ;indication that we reached the third stage
 
     ata_channel_var dq 0
     ata_master_var dq 0

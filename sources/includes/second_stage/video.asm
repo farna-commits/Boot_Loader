@@ -5,14 +5,11 @@
     video_cls_16:
             pusha                                   ; Save all general purpose registers on the stack
 
-            ;storing the page table itself in memory from 0x0000(es) to 0x1000(edi)
+            ;getting the effective address 0xb8000 by augementation 
             mov ax, VIDEO_BUFFER_SEGMENT     ;move into ax first as we cant move to es directly
             mov es, ax                          ;move to es
             xor eax,eax                         ;set eax=0
             mov edi, VIDEO_BUFFER_OFFSET         ;put in edi the end boundary
-
-
-
             ;loop for putting spaces on the screen with a black background to clear the screen
             .loop1:
             mov edx, ' '                        

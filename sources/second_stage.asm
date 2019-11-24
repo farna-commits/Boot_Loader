@@ -19,8 +19,8 @@ BITS 16
       call print_memory_regions
       call get_key_stroke     ; Wait for key storke to jump to second boot stage
       call build_page_table   
-      call disable_pic
       call video_cls_16       ;to clear after 2nd stage
+      call disable_pic
       call load_idt_descriptor
       call switch_to_long_mode
       jmp THIRD_STAGE_OFFSET  ;go to third stage
