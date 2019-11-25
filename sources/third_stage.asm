@@ -142,6 +142,7 @@ start_location   dq  0x0  ; A default start position (Line # 8)
     hello_world_str4 db 'start pdt loopp',13, 0   ;indication that we reached the third stage
     hello_world_str5 db '512 testt',13, 0   ;indication that we reached the third stage
     memory_tester_success db 'Memory Tester Succeeded!',13, 0   ;indication that we reached the third stage
+    idt_default_msg db 'idt default handler!',13, 0   ;indication that we reached the third stage
 
     ata_channel_var dq 0
     ata_master_var dq 0
