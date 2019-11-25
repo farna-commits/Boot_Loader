@@ -1,4 +1,22 @@
 ;*******************************************************************************************************************
+video_cls:
+pushaq
+mov rbx, 0x0B8000       ;mov into rbx the address of vga
+mov r13, 4000           ;4000 is the boundary of the screen 
+xor r9,r9               ;counter to stop at 4000 and increment by 2
+    .loop:
+    mov byte[rbx],' '       ;move nothing on the screen
+    inc rbx
+    mov byte[rbx],0         ;choose the black color
+    inc rbx
+    inc r9                  ;incrementing 2 times 
+    inc r9
+    cmp r9, r13             ;compare if i reached the end of the screen
+    jle .loop
+    mov qword[start_location],0     ;reinitialize the location of the cursor back to the top left
+popaq
+ret
+
 bios_print_hexa:  ; A routine to print a 16-bit value stored in di in hexa decimal (4 hexa digits)
 pushaq
 xor r12, r12
@@ -65,8 +83,16 @@ video_print:
     pushaq
     mov rbx,0x0B8000          ; set BX to the start of the video RAM
     ;mov es,bx               ; Set ES to the start of teh video RAM
+    mov r9, 0
+    mov r10, r9  ;first row
+    add r9, 160  ;second row
+    mov r13, 3998
+    mov r12, 0     ;counter for scroll
+    cmp [start_location], r13
+    jg scroll2
+ 
+    cont2:
     add bx,[start_location] ; Store the start location for printing in BX
-
     xor rcx,rcx
 video_print_loop:           ; Loop for a character by charcater processing
     lodsb                   ; Load character pointer to by SI into al
@@ -97,6 +123,22 @@ out_video_print_loop:
     mul r8
     mov [start_location],ax
     jmp finish_video_print_loop
+scroll2:
+    xor r12, r12
+    mov r14, 0xB8000
+    mov r15, 0xB8000
+    add r14, r10
+    add r15, r9 ;Add 160 to move to next line
+    scroll_loop2:
+        mov al, byte[r15] ;place what is in next line 
+        mov byte[r14], al ;place it in previous line
+        inc r14 ;increment both to advance to next character
+        inc r15
+        inc r12
+        cmp r12, 4000       ;msh 3aref leh msh 3998 (79,24)
+        jl scroll_loop2
+        mov qword[start_location], 3840     ;offset to start from the last letter of the last line
+        jmp cont2
 out_video_print_loop1:
     mov ax,[start_location] ; Store the start location for printing in AX
     add ax,cx             ; Add a line to the value of start location (80 x 2 bytes)

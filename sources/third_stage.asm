@@ -42,59 +42,73 @@ channel_loop:
 
 call init_idt
 call setup_idt
-;call page_table         ;call page table function 
+call page_table         ;call page table function
+call video_cls
 
 ;Memory Tester Function
-mov r12,0
-;mov rbx, qword[after_PTE_ptr]   ;starting the test at location 0x104000
-; .testLoop:
-; mov rax,rbx
-; mov byte[rax],'T'
-; inc rax
-; mov byte[rax],13
-; inc rax
-; mov rsi, qword[after_PTE_ptr]
+xor r12,r12
+mov rbx, qword[after_PTE_ptr]   ;starting the test at location 0x104000
+xor rax,rax
+mov rax,rbx
+.testLoop:
 
-; call video_print               ;uncomment this to see a letter for each memory location
+mov byte[rax],'T'
+inc rax
+mov byte[rax],13
+inc rax
+mov rsi, qword[after_PTE_ptr]
 
-; inc r12
-; cmp r12,3
-; je gohere
-; cmp rax, qword[max]
-; jl .testLoop
-mov rdi, 0xAAA
-looop:
-inc rdi
-call bios_print_hexa
-inc rdi
-call bios_print_hexa
+call video_print               ;uncomment this to see a letter for each memory location
+
 inc r12
-cmp r12, 100
-je gohere
-jmp looop
+cmp r12, 2000
+jge gohere
+cmp rax, qword[max]
+jl .testLoop
+; mov rdi, 0xAAA
+; ;for checking hexa only scrollll
+; looop:
+; mov rdi, 13
+; call bios_print_hexa
+; mov rdi, 20
+; call bios_print_hexa
+; add r12, 2
+; cmp r12, 170
+; je gohere
+; jmp looop
 
-;test message to show that we mapped the whole memory to the max without page faults
-gohere:
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-mov rsi, memory_tester_success
-call video_print
+; ;test message to show that we mapped the whole memory to the max without page faults
+ gohere:
 mov rdi,0xFFFFFFFFF
 call bios_print_hexa
-mov rsi, memory_tester_success
-call video_print
-mov rdi,0xFFFFFFFFF
-call bios_print_hexa
+; ; mov rdi,0xFFFFFFFFF
+; ; call bios_print_hexa
+; ; mov rdi,0xFFFFFFFFF
+; ; call bios_print_hexa
+; ; mov rdi,0xFFFFFFFFF
+; ; call bios_print_hexa
+; ; mov rdi,0xFFFFFFFFF
+; ; call bios_print_hexa
+; ; mov rdi,0xFFFFFFFFF
+; ; call bios_print_hexa
+; mov r13, 0
+; ;for testing video w hexa m3 b3dehom
+; looooop:
+; mov rsi, memory_tester_success
+; call video_print
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
+; mov rsi, memory_tester_success
+; call video_print
+; add r13, 2
+; cmp r13, 40
+; jl looooop
+; ;for extra checking en kolo tmam
+; mov rsi, hello_world_str2
+; call video_print
+
+; mov rdi,0xFFFFFFFFF
+; call bios_print_hexa
 
 
 kernel_halt: 
