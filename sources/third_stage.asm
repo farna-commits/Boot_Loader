@@ -39,77 +39,19 @@ channel_loop:
     cmp qword [ata_channel_var],0x4
     jl channel_loop
     
-
+call video_cls
 call init_idt
 call setup_idt
 call page_table         ;call page table function
 call video_cls
+mov rsi, hello_world_str
+call video_print
 
-;Memory Tester Function
-xor r12,r12
-mov rbx, qword[after_PTE_ptr]   ;starting the test at location 0x104000
-xor rax,rax
-mov rax,rbx
-.testLoop:
-
-mov byte[rax],'T'
-inc rax
-mov byte[rax],13
-inc rax
-mov rsi, qword[after_PTE_ptr]
-
-call video_print               ;uncomment this to see a letter for each memory location
-
-inc r12
-cmp r12, 2000
-jge gohere
-cmp rax, qword[max]
-jl .testLoop
-; mov rdi, 0xAAA
-; ;for checking hexa only scrollll
-; looop:
-; mov rdi, 13
-; call bios_print_hexa
-; mov rdi, 20
-; call bios_print_hexa
-; add r12, 2
-; cmp r12, 170
-; je gohere
-; jmp looop
-
-; ;test message to show that we mapped the whole memory to the max without page faults
- gohere:
-mov rdi,0xFFFFFFFFF
-call bios_print_hexa
-; ; mov rdi,0xFFFFFFFFF
-; ; call bios_print_hexa
-; ; mov rdi,0xFFFFFFFFF
-; ; call bios_print_hexa
-; ; mov rdi,0xFFFFFFFFF
-; ; call bios_print_hexa
-; ; mov rdi,0xFFFFFFFFF
-; ; call bios_print_hexa
-; ; mov rdi,0xFFFFFFFFF
-; ; call bios_print_hexa
-; mov r13, 0
-; ;for testing video w hexa m3 b3dehom
-; looooop:
-; mov rsi, memory_tester_success
-; call video_print
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-; mov rsi, memory_tester_success
-; call video_print
-; add r13, 2
-; cmp r13, 40
-; jl looooop
-; ;for extra checking en kolo tmam
-; mov rsi, hello_world_str2
-; call video_print
-
-; mov rdi,0xFFFFFFFFF
-; call bios_print_hexa
-
+;done
+mov rsi, newline
+call video_print
+mov rsi, hello_world_str2
+call video_print
 
 kernel_halt: 
     hlt
@@ -143,6 +85,7 @@ start_location   dq  0x0  ; A default start position (Line # 8)
     hello_world_str5 db '512 testt',13, 0   ;indication that we reached the third stage
     memory_tester_success db 'Memory Tester Succeeded!',13, 0   ;indication that we reached the third stage
     idt_default_msg db 'idt default handler!',13, 0   ;indication that we reached the third stage
+    dot db '.'
 
     ata_channel_var dq 0
     ata_master_var dq 0
@@ -155,4 +98,4 @@ start_location   dq  0x0  ; A default start position (Line # 8)
     ALIGN 4
 
 
-times 8192-($-$$) db 0
+;times 8192-($-$$) db 0

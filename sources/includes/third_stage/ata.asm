@@ -116,19 +116,51 @@ endstruc
 
 ata_copy_pci_header:
     pushaq
-      ; This function need to be written by you.
+        mov rdi,ata_pci_header
+        mov rsi,pci_header
+        mov rcx, 0x20
+        xor rax, rax
+        cld
+        rep stosq
     popaq
     ret
 
 select_ata_disk:              ; rdi = channel, rsi = master/slave
     pushaq
-    ; This function need to be written by you.
+        xor rax,rax
+        mov dx,[ata_base_io_ports+rdi]
+        add dx,ATA_REG_HDDEVSEL
+        mov al,byte [ata_drv_selector+rsi] ; Fetch the corresponding drive value, master/slave
+        out dx,al
     popaq
     ret
 
 ata_print_size:
     pushaq
-        ; This function need to be written by you.
+        mov byte [ata_identify_buffer+39],0x0
+        mov rsi, ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.serial
+        call video_print
+        mov rsi,comma
+        call video_print
+        mov byte [ata_identify_buffer+50],0x0
+        mov rsi, ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.fw_version
+        call video_print
+        mov rsi,comma
+        call video_print
+        xor rdi,rdi
+        mov rdi, qword [ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.lba_48_sectors]
+        call bios_print_hexa
+        mov ax, 0000010000000000b
+        and ax,word [ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.command_set5]
+        cmp ax,0x0
+        je .out
+        mov rsi,comma
+        call video_print
+        mov rsi,lba_48_supported
+        call video_print
+        .out:
+        mov rsi,newline
+        call video_print
     popaq
     ret
 
@@ -136,7 +168,65 @@ ata_print_size:
 ata_identify_disk:              ; rdi = channel, rsi = master/slave
     pushaq
         
-        ; This function need to be written by you.
-        .out:
-    popaq
-    ret
+        xor rax,00000000b
+        mov dx,[ata_control_ports+rdi]
+        out dx,al
+        call select_ata_disk
+        xor rax,rax
+        mov dx,[ata_base_io_ports+rdi] 
+        add dx,ATA_REG_SECCOUNT0
+        out dx,al
+        mov dx,[ata_base_io_ports+rdi]
+        add dx,ATA_REG_LBA0
+        out dx,al
+        mov dx,[ata_base_io_ports+rdi]
+        add dx,ATA_REG_LBA1
+        out dx,al
+        mov dx,[ata_base_io_ports+rdi]
+        add dx,ATA_REG_LBA2
+        out dx,al
+        mov dx,[ata_base_io_ports+rdi] 
+        add dx,ATA_REG_COMMAND
+        mov al,ATA_CMD_IDENTIFY
+        out dx,al
+        mov dx,[ata_base_io_ports+rdi] 
+        add dx,ATA_REG_STATUS
+        in al, dx
+        cmp al, 0x2
+        jl .error
+
+    .check_ready:
+        mov dx,[ata_base_io_ports+rdi]
+        add dx,ATA_REG_STATUS
+        in al, dx
+        xor rcx,rcx
+        mov cl,ATA_SR_ERR
+        and cl,al
+        cmp cl,ATA_SR_ERR
+        je .error
+        mov cl,ATA_SR_DRQ
+        and cl,al
+        cmp cl,ATA_SR_DRQ
+        jne .check_ready
+        jmp .ready
+
+    .error:
+        mov rsi,ata_error_msg
+        call video_print
+        jmp .out
+
+    .ready:
+        mov rsi,ata_identify_msg
+        call video_print
+        mov rdx,[ata_base_io_ports+rdi]
+        mov si,word [ata_identify_buffer_index]
+        add rdi,ata_identify_buffer
+        mov rcx, 256
+        xor rbx,rbx
+        rep insw
+        add word [ata_identify_buffer_index],256
+        call ata_print_info
+           
+    .out:
+        popaq
+        ret

@@ -28,7 +28,18 @@ init_idt:         ; Intialize the IDT which is 256 entries each entry correspond
                   ; Each entry is 16 bytes long
                   ; Table total size if 4KB = 256 * 16 = 4096 bytes
       pushaq
-      ; This function need to be written by you.
+      xor r8,r8 ;empty register to move 8 bytes of zeros in to the IDT base address
+      xor r9,r9 ; counter for the loop
+      xor r10,r10 ; empty the register to store the IDT base address in it
+      mov r10,IDT_BASE_ADDRESS
+      
+      .init_idt_loop:
+            mov qword [r10], r8 ;initialize the first 8byte by zeros
+            add r10,8 ; increment the address by 8 bytes (to intialize the rest of the entry - 16 bytes)
+            inc r9 ; increment the counter 
+            cmp r9,512 ; if counter is less than 512 (256*2) --> continue looping
+            jl .init_idt_loop 
+
       popaq
       ret
 
@@ -44,7 +55,33 @@ register_idt_handler: ; Store a handler into the handler array
 
 setup_idt:
       pushaq
-            ; This function need to be written by you.
+      cli                           ;stop the interrupts
+      call configure_pic            ;configuring the pic
+      mov rcx,0                     ;shift amount (choose which bit to unmask; pin number)
+      ;mask all the pins
+      .loop:
+      mov rdi,rcx                   ;move the pin number in argument of the fn (rdi)
+      call set_irq_mask             ;call the masking function
+      inc rcx                       ;inc the pin number 
+      cmp rcx,15                    ;compare with the last pin
+      jl .loop
+
+      call setup_idt_exceptions     ;to set the 32 ISR
+      call setup_idt_irqs           ;to set the 16 IRQ
+      ;--------------------------Test-----------------------------------;
+      mov rsi, isr255               ;call the iretq
+      mov rdi, 13                   ;test a random isr
+      call setup_idt_entry          ;set the entry of the idt
+      ;-----------------------------------------------------------------;
+
+      call load_idt_descriptor      ;load the descriptor of the idt
+      call configure_pit            ;configure the pit
+      ;--------------------------Test-----------------------------------;
+      mov rdi,0                     ;argument of the function (unmask irq0 for the pit)
+      call clear_irq_mask           ;call the un-masking function
+      ;-----------------------------------------------------------------;
+      sti                           ;activate the interrupts
+
       popaq
       ret
 
@@ -82,8 +119,8 @@ idt_default_handler:
       pushaq
 ;            This is the default
       ;print a general message saying we got here 
-      mov rsi, idt_default_msg
-      call video_print
+     ; mov rsi, idt_default_msg
+      ;call video_print
       popaq
       ret
 

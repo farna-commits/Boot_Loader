@@ -97,6 +97,7 @@ ret
 page_table:
 pushaq
 call get_max   ;get the max type 1 memory that can me mapped, used in PTE loop
+xor r12,r12                     ;for printing the dots
 PML4_loop:        ;this level will create 512 pdt tables to map 512 x 512 x 512 x 2mb = 262tb   
 mov rbx, qword[PDP_ptr]         ;move PDP pointer to rbx
 or rbx, PAGE_PRESENT_WRITE      ;or it to make it page active
@@ -112,6 +113,7 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
      mov qword[PDT_counter], 0x0 ;reset the pdt counter
 
           PDT_loop:    ;this level will create 512 pte tables to map 512 x 2mb = 1gb 
+          
           mov rbx, qword[PTE_ptr]         ;move pte pointer to rbx
           or rbx, PAGE_PRESENT_WRITE      ;or it to make it page active
           mov rax, qword[PDT_ptr]         ;move pte pointre to rax
@@ -140,8 +142,12 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
                add qword[Physical_mem_ptr], MEM_PAGE_4K         ;incriment a page from physical
                inc qword[PTE_counter]                     ;counter ++
                cmp qword[PTE_counter], FIVE_TWELVE ;check if counter for PTE reached 512
-               jl PTE_loop            ;if still less continue looping
- 
+               jl PTE_loop            ;if still less continue looping 
+          
+          ; cmp r12,5
+          ; je dots
+          ; inc r12
+          ; after_dots:
 
           ;update cr3
           mov rax, qword[PML4_ptr]
@@ -165,6 +171,12 @@ add qword[PML4_ptr], CELL                         ;incriment to next cell in pml
 inc qword[PML4_counter]                           ;counter++
 cmp qword[PML4_counter], FIVE_TWELVE              ;check if counter reached 512
 jl PML4_loop                                      ;if still less continue looping
+
+; dots:
+; mov byte[rsi], '.'
+; call video_print
+; xor r12,r12
+; jmp  after_dots
 
 exit:               ;in case of bypassing max memory of type 1 or finishing the loops 
 ;update cr3 for the final time
