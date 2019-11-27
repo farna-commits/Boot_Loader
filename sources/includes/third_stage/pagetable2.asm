@@ -144,10 +144,10 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
                cmp qword[PTE_counter], FIVE_TWELVE ;check if counter for PTE reached 512
                jl PTE_loop            ;if still less continue looping 
           
-          ; cmp r12,5
-          ; je dots
-          ; inc r12
-          ; after_dots:
+          cmp r12,10
+          je dots
+          inc r12
+          after_dots:
 
           ;update cr3
           mov rax, qword[PML4_ptr]
@@ -172,11 +172,6 @@ inc qword[PML4_counter]                           ;counter++
 cmp qword[PML4_counter], FIVE_TWELVE              ;check if counter reached 512
 jl PML4_loop                                      ;if still less continue looping
 
-; dots:
-; mov byte[rsi], '.'
-; call video_print
-; xor r12,r12
-; jmp  after_dots
 
 exit:               ;in case of bypassing max memory of type 1 or finishing the loops 
 ;update cr3 for the final time
@@ -184,3 +179,10 @@ mov rax, qword[PML4_ptr]
 mov cr3,rax
 popaq
 ret
+
+
+dots:
+mov byte[rsi], '.'
+call video_print
+xor r12,r12
+jmp  after_dots

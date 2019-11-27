@@ -225,7 +225,8 @@ ata_identify_disk:              ; rdi = channel, rsi = master/slave
         xor rbx,rbx
         rep insw
         add word [ata_identify_buffer_index],256
-        call ata_print_info
+        ;call ata_print_info
+        call ata_print_size
            
     .out:
         popaq
