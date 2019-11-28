@@ -2,8 +2,8 @@
 %define CONFIG_ADDRESS  0xcf8
 %define CONFIG_DATA     0xcfc
 
-ata_device_msg db 'Found ATA Controller',13,10,0
-pci_header times 512 db 0
+ata_device_msg db 'Found ATA Controller!',13,10,0
+pci_header times 256 db 0
 
 pci_header_memory             dq   0xdac000     ;place in memory to copy the devices in memory
 pci_header_memory_offset      dq   0x0           ;offset from the address

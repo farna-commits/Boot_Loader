@@ -52,20 +52,26 @@
 %define ATA_REG_COMMAND    0x07     ; This register for sending the command to be performed after filling up the rest of the registers
 %define ATA_REG_STATUS     0x07     ; This register is used to read the status of the channel
 
-ata_pci_header times 1024 db 0  ; A memroy space to store ATA Controller PCI Header (4*256)
+ata_pci_header times 256 db 0  ; A memroy space to store ATA Controller PCI Header (4*256)
 ; Indexed values
+;semi-macros
 ata_control_ports dw ATA_PRIMARY_CR_AS,ATA_SECONDARY_CR_AS,0
 ata_base_io_ports dw ATA_PRIMARY_BASE_IO,ATA_SECONDARY_BASE_IO,0
 ata_slave_identifier db ATA_MASTER,ATA_SLAVE,0
 ata_drv_selector db ATA_MASTER_DRV_SELECTOR,ATA_SLAVE_DRV_SELECTOR,0
 
+
+;messages to be used
 ata_error_msg       db "Error Identifying Drive",13,10,0
-ata_identify_msg    db "Found Drive",0
+ata_identify_msg    db "Found Drive: ",0
+lba_48_supported db 'LBA-48 Supported',0
+
+
 ata_identify_buffer times 2048 db 0  ; A memroy space to store the 4 ATA devices identify details (4*512)
 ata_identify_buffer_index dw 0x0
 ata_channel db 0
 ata_slave db 0  
-lba_48_supported db 'LBA-48 Supported',0
+
 align 4
 
 
@@ -109,12 +115,13 @@ struc ATA_IDENTIFY_DEV_DUMP                     ; Starts at
 .rem_media_status_notif     resw              1  ; 127
 .gap11                      resw              48 ; 128
 .curret_media_serial_number resw              1  ; 176
-.gap12                       resw             78 ; 177
+.gap12                      resw              78 ; 177
 .integrity_word             resw              1  ; 255      Checksum
 endstruc
 
 
 ata_copy_pci_header:
+;copy pci header to ata pci header
     pushaq
         mov rdi,ata_pci_header
         mov rsi,pci_header
@@ -126,6 +133,7 @@ ata_copy_pci_header:
     ret
 
 select_ata_disk:              ; rdi = channel, rsi = master/slave
+;write to channel port with offset hddevsel a number depending if its master or slave
     pushaq
         xor rax,rax
         mov dx,[ata_base_io_ports+rdi]
@@ -168,65 +176,82 @@ ata_print_size:
 ata_identify_disk:              ; rdi = channel, rsi = master/slave
     pushaq
         
-        xor rax,00000000b
-        mov dx,[ata_control_ports+rdi]
-        out dx,al
-        call select_ata_disk
-        xor rax,rax
-        mov dx,[ata_base_io_ports+rdi] 
-        add dx,ATA_REG_SECCOUNT0
-        out dx,al
-        mov dx,[ata_base_io_ports+rdi]
-        add dx,ATA_REG_LBA0
-        out dx,al
-        mov dx,[ata_base_io_ports+rdi]
-        add dx,ATA_REG_LBA1
-        out dx,al
-        mov dx,[ata_base_io_ports+rdi]
-        add dx,ATA_REG_LBA2
-        out dx,al
-        mov dx,[ata_base_io_ports+rdi] 
-        add dx,ATA_REG_COMMAND
-        mov al,ATA_CMD_IDENTIFY
-        out dx,al
-        mov dx,[ata_base_io_ports+rdi] 
-        add dx,ATA_REG_STATUS
-        in al, dx
-        cmp al, 0x2
-        jl .error
+        ;move 0 to control port
+        xor rax,00000000b                           ;disabling interrupts (refresh)
+        mov dx,[ata_control_ports+rdi]              ;moving control ports (0->7) to dx
+        out dx,al                                   ;write in control port the lower 8 bits of rax 
+
+        ;return modified base port
+        call select_ata_disk                        ;call the select disk function to identify the packet
+
+        ;send out zero to sector count, lba0, lba1 and lba2
+        ;to use lba28 mode
+        xor rax,rax                                 ;zeroing rax
+        mov dx,[ata_base_io_ports+rdi]              ;set the ports to be written into 
+        add dx,ATA_REG_SECCOUNT0                    ;number of sectors to read
+        out dx,al                                   ;write to the port to read number of sectors
+        mov dx,[ata_base_io_ports+rdi]              ;change dx to write in the port to get lba
+        add dx,ATA_REG_LBA0                         ;add lba0 offset (store address of 1st sector in 0x03)
+        out dx,al                                   ;write to the port to get 1st 8 bits of 1st sector
+        mov dx,[ata_base_io_ports+rdi]              ;change dx to write in the port to get lba
+        add dx,ATA_REG_LBA1                         ;add lba1 offset (store address of 1st sector in 0x04)
+        out dx,al                                   ;write to the port to get 2nd 8 bits of 1st sector
+        mov dx,[ata_base_io_ports+rdi]              ;change dx to write in the port to get lba
+        add dx,ATA_REG_LBA2                         ;add lba2 offset (Store address of 1st sector in 0x05)
+        out dx,al                                   ;write to the port to get 3rd 8 bits of 1st sector
+        
+        ;set identify command
+        mov dx,[ata_base_io_ports+rdi]              ;change dx to write in the port to get lba
+        add dx,ATA_REG_COMMAND                      ;adding command offset
+        mov al,ATA_CMD_IDENTIFY                     ;move the identify command 
+        out dx,al                                   ;write in the port to get the identity
+        
+        ;read the status for the first time
+        mov dx,[ata_base_io_ports+rdi]              ;change dx to get identity 
+        add dx,ATA_REG_STATUS                       ;add offset of status
+        in al, dx                                   ;read from port the status of ata
+        cmp al, ATA_SR_ERR                          ;if less than 2, then an error occured
+        je .error                                   ;goto error label
 
     .check_ready:
-        mov dx,[ata_base_io_ports+rdi]
-        add dx,ATA_REG_STATUS
-        in al, dx
-        xor rcx,rcx
-        mov cl,ATA_SR_ERR
-        and cl,al
-        cmp cl,ATA_SR_ERR
-        je .error
-        mov cl,ATA_SR_DRQ
-        and cl,al
-        cmp cl,ATA_SR_DRQ
-        jne .check_ready
-        jmp .ready
+    ;loop to check if PIO is ready or there was an error
+
+        ;check if error 0x01
+        mov dx,[ata_base_io_ports+rdi]              ;change dx to read identity if ata
+        add dx,ATA_REG_STATUS                       ;adding offset of status
+        in al, dx                                   ;read from port the status
+        xor rcx,rcx                                 ;zeroing rcx
+        mov cl,ATA_SR_ERR                           ;move 1 in cl 
+        and cl,al                                   ;and with the status
+        cmp cl,ATA_SR_ERR                           ;compare, as if the lsb is one then there was an error
+        je .error                                   ;goto error label
+        
+        ;check for PIO
+        mov cl,ATA_SR_DRQ                           ;move 8 in cl
+        and cl,al                                   ;and with status
+        cmp cl,ATA_SR_DRQ                           ;compare, if this (4th bit from left) is 1 then go to check if read
+    jne .check_ready                                ;goto check ready if 4th bit isnt 1
+    
+    jmp .ready                                      ;else, go to ready label
 
     .error:
-        mov rsi,ata_error_msg
-        call video_print
-        jmp .out
+    ;in case of error
+        mov rsi,ata_error_msg                       ;move to rsi the error message to print
+        call video_print                            ;call printing function
+        jmp .out                                    ;goto out label and return from function
 
     .ready:
-        mov rsi,ata_identify_msg
-        call video_print
-        mov rdx,[ata_base_io_ports+rdi]
-        mov si,word [ata_identify_buffer_index]
-        add rdi,ata_identify_buffer
-        mov rcx, 256
-        xor rbx,rbx
-        rep insw
-        add word [ata_identify_buffer_index],256
-        ;call ata_print_info
-        call ata_print_size
+    ;in case of being ready
+        mov rsi,ata_identify_msg                    ;move to rsi the identify message             
+        call video_print                            ;call printing function
+        mov rdx,[ata_base_io_ports+rdi]             ;move to rdx base io added to rdi offset
+        mov si,word [ata_identify_buffer_index]     ;move identity buffer index to si
+        mov rdi,ata_identify_buffer                 ;move identity buffer to rdi
+        mov rcx, 256                                ;start a counter with 256
+        xor rbx,rbx                                 ;zeroing rbx
+        rep insw                                    ;loop in store word 
+        add word [ata_identify_buffer_index],256    ;increment buffer by 256
+        call ata_print_size                         ;call print size function
            
     .out:
         popaq

@@ -20,9 +20,9 @@ handle_pit:
 
             add qword[print_counter],PIT_COUNT
             mov rdi, qword[print_counter]
-            call bios_print_hexa          ; Print pit_counter in hexa
+            ;call bios_print_hexa          ; Print pit_counter in hexa
             mov rsi,newline
-            call video_print
+            ;call video_print
             mov qword[pit_counter],0
             .skip:
             ;pop qword [start_location]

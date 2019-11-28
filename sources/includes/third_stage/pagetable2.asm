@@ -182,6 +182,7 @@ ret
 
 
 dots:
+xor rsi,rsi
 mov byte[rsi], '.'
 call video_print
 xor r12,r12

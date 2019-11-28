@@ -6,45 +6,25 @@
 [BITS 64]
 
 
+
 Kernel:
-
-
-
-channel_loop:
-    mov qword [ata_master_var],0x0
-    master_slave_loop:
-        mov rdi,[ata_channel_var]
-        mov rsi,[ata_master_var]
-        call ata_identify_disk
-        inc qword [ata_master_var]
-        cmp qword [ata_master_var],0x2
-        jl master_slave_loop
-
-    inc qword [ata_channel_var]
-    inc qword [ata_channel_var]
-    cmp qword [ata_channel_var],0x4
-    jl channel_loop
-
-
-
 call video_cls
-call init_idt
-call setup_idt
-
-
 call page_table         ;call page table function
+
 call video_cls
+
 mov rsi,msg_scan_device
 call video_print
+here1:
+pushaq
 bus_loop:
     device_loop:
         function_loop:
             call get_pci_device
-            check:
-            mov ax, word[pci_header + PCI_CONF_SPACE.device_id]
-            cmp ax, 0xffff
+             check:
+             mov bx, word[pci_header + PCI_CONF_SPACE.device_id]
+             cmp bx, 0xffff
             je noCopy
-            ;call copy_to_memory
             mov r14, qword[pci_header_memory]
             add r14, qword[pci_header_memory_offset]
             mov r15,r14
@@ -53,26 +33,21 @@ bus_loop:
             .loop:
             mov r10,qword[r14]
             mov qword[r15], r10
+            add r14,8
+            add r15,8
             dec rcx
             cmp rcx,0
             je .exit
             jmp .loop
 
             .exit:
-            ; mov rdi, qword[r15 + PCI_CONF_SPACE.device_id]
-            ; call bios_print_hexa
-            ; mov rsi,newline
-            ; call video_print
-            mov rsi, msg_new_device
-            call video_print
-            call print_deviceID
-            call print_vendorID
-            add qword[pci_header_memory_offset], 0xff     ;increment by 8 bytes (2 rows)
+            add qword[pci_header_memory_offset], 256     ;increment by 8 bytes (2 rows)
+            inc qword[device_counter]                    ;a device was found
 
             noCopy:
-            inc byte [function]
-            cmp byte [function],8
-            jne function_loop
+             inc byte [function]
+             cmp byte [function],8
+             jne function_loop
 
         inc byte [device]
         mov byte [function],0x0
@@ -83,36 +58,57 @@ bus_loop:
     cmp byte [bus],255
     jne bus_loop
 
-    ; mov qword[pci_header_memory_offset] , 0
-    ; mov r9, 32
-    ; loop6:
-    ; mov r15, qword[pci_header_memory]
-    ; add r15, qword[pci_header_memory_offset]
-    ; mov r8, qword[r15+ PCI_CONF_SPACE.vendor_id]
-    ; mov rdi, r8
-    ; call bios_print_hexa
-    ; ; mov rsi, newline
-    ; ; call video_print
+    mov qword[pci_header_memory_offset] , 0
+    mov r9, qword[device_counter]
+popaq
+    
+    loop6:
+    mov r15, qword[pci_header_memory]
+    add r15, qword[pci_header_memory_offset]
+    mov bl, byte[r15 + PCI_CONF_SPACE.class]
+    cmp bl,1
+    je  ata_found
+    here2:
+    mov rsi,msg_new_device
+    call video_print
+    call print_deviceID
+    call print_vendorID
 
-    ; add qword[pci_header_memory_offset],255
-    ; dec r9
-    ; cmp r9,0
-    ; je exit3
-    ; jmp loop6
+    add qword[pci_header_memory_offset],256
+    dec r9
+    cmp r9,1
+    je exit3
+    jmp loop6
+
+    ata_found:
+    mov rsi, ata_device_msg
+    call video_print
+    jmp here2
     exit3:
+    mov rsi, msg_finish_scan
+    call video_print
 
+
+;call ata_copy_pci_header
+channel_loop:
+    mov qword [ata_master_var],0x0
+    master_slave_loop:
+        mov rdi,[ata_channel_var]
+        mov rsi,[ata_master_var]
+        call ata_identify_disk
+        inc qword [ata_master_var]
+        cmp qword [ata_master_var],0x2
+    jl master_slave_loop
+
+    inc qword [ata_channel_var]
+    inc qword [ata_channel_var]
+    cmp qword [ata_channel_var],0x4
+jl channel_loop
     
 
-
-;call video_cls
-; mov rsi, hello_world_str
-; call video_print
-
-;done
-;mov rsi, newline
-;call video_print
-;mov rsi, hello_world_str2
-;call video_print
+call init_idt
+call setup_idt
+    
 
 kernel_halt: 
     hlt
@@ -135,12 +131,13 @@ kernel_halt:
 colon db ':',0
 comma db ',',0
 newline db 13,0
+device_counter dq   0       ;counter of devices
 
 end_of_string  db 13        ; The end of the string indicator
 start_location   dq  0x0  ; A default start position (Line # 8)
 
     hello_world_str db 'bypassed page table',13, 0   ;indication that we reached the third stage
-    msg_mapping db ' Mapping the whole memory: ',13, 0   ;indication that we reached the third stage
+    msg_finish_scan db ' Scanning done ',13, 0   ;indication that we reached the third stage
 
     memory_tester_success db 'Memory Tester Succeeded!',13, 0   ;indication that we reached the third stage
     idt_default_msg db 'idt default handler!',13, 0   ;indication that we reached the third stage
