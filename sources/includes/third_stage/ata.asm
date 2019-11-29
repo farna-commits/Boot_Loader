@@ -55,10 +55,10 @@
 ata_pci_header times 256 db 0  ; A memroy space to store ATA Controller PCI Header (4*256)
 ; Indexed values
 ;semi-macros
-ata_control_ports dw ATA_PRIMARY_CR_AS,ATA_SECONDARY_CR_AS,0
-ata_base_io_ports dw ATA_PRIMARY_BASE_IO,ATA_SECONDARY_BASE_IO,0
-ata_slave_identifier db ATA_MASTER,ATA_SLAVE,0
-ata_drv_selector db ATA_MASTER_DRV_SELECTOR,ATA_SLAVE_DRV_SELECTOR,0
+ata_control_ports dw ATA_PRIMARY_CR_AS,ATA_SECONDARY_CR_AS,0 ;ATA control port --> primary &secondary control register and alternate status port
+ata_base_io_ports dw ATA_PRIMARY_BASE_IO,ATA_SECONDARY_BASE_IO,0 ; I/O ports --> primary/secondary bases of ports
+ata_slave_identifier db ATA_MASTER,ATA_SLAVE,0; Ata identifier --> whether its a master or slave
+ata_drv_selector db ATA_MASTER_DRV_SELECTOR,ATA_SLAVE_DRV_SELECTOR,0 ; whether its a master or slave drive
 
 
 ;messages to be used
@@ -123,11 +123,11 @@ endstruc
 ata_copy_pci_header:
 ;copy pci header to ata pci header
     pushaq
-        mov rdi,ata_pci_header
-        mov rsi,pci_header
-        mov rcx, 0x20
+        mov rdi,ata_pci_header ;moves the ata pci header in to rdi
+        mov rsi,pci_header ; moves the pci header in to rsi
+        mov rcx, 0x20 ; preparing to repeat it 512 times using rep stosq
         xor rax, rax
-        cld
+        cld ; clears the direction flag --> decrementing rcx
         rep stosq
     popaq
     ret
@@ -135,35 +135,40 @@ ata_copy_pci_header:
 select_ata_disk:              ; rdi = channel, rsi = master/slave
 ;write to channel port with offset hddevsel a number depending if its master or slave
     pushaq
-        xor rax,rax
-        mov dx,[ata_base_io_ports+rdi]
-        add dx,ATA_REG_HDDEVSEL
+        xor rax,rax ; makes sure that rax is empty
+        mov dx,[ata_base_io_ports+rdi] ; moves the ATA IO ports into dx with the channel as an offset (rdi)
+        add dx,ATA_REG_HDDEVSEL ; adding to dx the offset for selecting whether its master or slave
         mov al,byte [ata_drv_selector+rsi] ; Fetch the corresponding drive value, master/slave
-        out dx,al
+        out dx,al ;writing dx on to the port
     popaq
     ret
 
 ata_print_size:
     pushaq
-        mov byte [ata_identify_buffer+39],0x0
+        mov byte [ata_identify_buffer+39],0x0 ; move a zero in to byte #39 starting from ata_identify_buffer space
+        ; printing the serial using video print
         mov rsi, ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.serial
         call video_print
         mov rsi,comma
         call video_print
-        mov byte [ata_identify_buffer+50],0x0
+        mov byte [ata_identify_buffer+50],0x0  ; move a zero in to byte #50 starting from ata_identify_buffer space
+         ; printing the firmware version using video print
         mov rsi, ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.fw_version
         call video_print
         mov rsi,comma
         call video_print
+        ; printing the number of LBA sectors using video print
         xor rdi,rdi
         mov rdi, qword [ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.lba_48_sectors]
-        call bios_print_hexa
+        call video_print_hexa
+        ;checking if LBA is supported or not
         mov ax, 0000010000000000b
         and ax,word [ata_identify_buffer+ATA_IDENTIFY_DEV_DUMP.command_set5]
         cmp ax,0x0
-        je .out
+        je .out ; jump if LBA  is not supported
+        ;else LBA  is supported
         mov rsi,comma
-        call video_print
+        call video_print 
         mov rsi,lba_48_supported
         call video_print
         .out:

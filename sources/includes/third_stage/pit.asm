@@ -12,20 +12,16 @@ handle_pit:
       pushaq
             
             mov rdi,[pit_counter]         ; Value to be printed in hexa
-            ;push qword [start_location]
-            ;mov qword [start_location],0
-
             cmp qword[pit_counter], PIT_COUNT
             jne .skip
 
             add qword[print_counter],PIT_COUNT
             mov rdi, qword[print_counter]
-            ;call bios_print_hexa          ; Print pit_counter in hexa
+            call video_print_hexa          ; Print pit_counter in hexa
             mov rsi,newline
-            ;call video_print
+            call video_print
             mov qword[pit_counter],0
             .skip:
-            ;pop qword [start_location]
             inc qword [pit_counter]       ; Increment pit_counter
       popaq
       ret

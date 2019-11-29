@@ -17,7 +17,7 @@ xor r9,r9               ;counter to stop at 4000 and increment by 2
 popaq
 ret
 
-bios_print_hexa:  ; A routine to print a 16-bit value stored in di in hexa decimal (4 hexa digits)
+video_print_hexa:  ; A routine to print a 16-bit value stored in di in hexa decimal (4 hexa digits)
 pushaq
 xor r12, r12
 mov rbx,0x0B8000          ; set BX to the start of the video RAM

@@ -13,6 +13,7 @@ call page_table         ;call page table function
 
 call video_cls
 
+;PCI
 mov rsi,msg_scan_device
 call video_print
 here1:
@@ -62,6 +63,7 @@ bus_loop:
     mov r9, qword[device_counter]
 popaq
     
+    ;printing pci details
     loop6:
     mov r15, qword[pci_header_memory]
     add r15, qword[pci_header_memory_offset]
@@ -87,8 +89,10 @@ popaq
     exit3:
     mov rsi, msg_finish_scan
     call video_print
-
-
+;ATA 
+xor rsi,rsi
+mov rsi, msg_start_ata
+call video_print
 ;call ata_copy_pci_header
 channel_loop:
     mov qword [ata_master_var],0x0
@@ -105,7 +109,10 @@ channel_loop:
     cmp qword [ata_channel_var],0x4
 jl channel_loop
     
-
+;initializing idt and pit ticks will start
+xor rsi,rsi
+mov rsi,msg_start_pit
+call video_print
 call init_idt
 call setup_idt
     
@@ -136,11 +143,12 @@ device_counter dq   0       ;counter of devices
 end_of_string  db 13        ; The end of the string indicator
 start_location   dq  0x0  ; A default start position (Line # 8)
 
-    hello_world_str db 'bypassed page table',13, 0   ;indication that we reached the third stage
-    msg_finish_scan db ' Scanning done ',13, 0   ;indication that we reached the third stage
+    hello_world_str db 'bypassed page table',13, 0  
+    msg_finish_scan db ' Scanning done ',13, 0   
+    msg_start_pit db 'PIT ticks will start: ',13, 0   
+    msg_start_ata db 'ATA devices details: ',13, 0   
 
-    memory_tester_success db 'Memory Tester Succeeded!',13, 0   ;indication that we reached the third stage
-    idt_default_msg db 'idt default handler!',13, 0   ;indication that we reached the third stage
+    memory_tester_success db 'Memory Tester Succeeded!',13, 0   
     dot db '.'
 
     ata_channel_var dq 0

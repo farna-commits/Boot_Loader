@@ -89,73 +89,13 @@ endstruc
       cmp rsi,0xff; Check if we have read the whole 256 Configuration Space
       jl pci_config_space_read_loop
 
-
-      ;check if device 
-
-
-      ;call copy_to_memory         ;call the copying function
-      ;call check_deviceID
   popaq
   ret
 
 
- ;to take each pci header table to the memory
- ;copy two rows at a time (1 register->8bytes ; 1 row->4 bytes)
-; copy_to_memory:
-; pushaq
-; ;base-> r8 ; base+offset ->r9 ; counter -> r10
-; ;xor r8, r8
-; mov r8, qword[pci_header_memory]          ;move the base address
-; ;xor r9, r9
-; xor r10, r10    ;counter of rows 
-; xor r11, r11    ;offset for pci_header    
-; ;mov qword[pci_header_memory_offset], 0
-; mov r9, qword[pci_header_memory_offset+r8]
-; mov r12, pci_header              ;take a copy
-; mov r9, r12
-;   .loop:
- ; mov r9, qword[r8+pci_header_memory_offset]   ;base+offset to 
-  
-  ;add r9,r8
 
 
 
-  ;mov qword[r9], r12
-  ; mov rdi, qword[r9]
-  ; call bios_print_hexa
-
-  ; mov rsi, newline
-  ; call video_print
-  
-
-  ; add r11, 256           ;increment pci_header offset
-  ; inc r10               ;increment the counter of rows
-  ; cmp r10,32     ;compare with 8 (16 row 16 x 4bytes = 64)
-  ;jl .loop
-;   add qword[pci_header_memory_offset], 256     ;increment by 8 bytes (2 rows)
-; ;mov qword[pci_header_memory_offset], 0x0
-; mov r13, qword[pci_header_memory_offset]
-; add r13, r8
-; mov rdi, qword[r13]
-; call bios_print_hexa
-; mov rsi, newline
-; call video_print
-popaq
-ret
-
-check_deviceID:
-pushaq
-; mov qword[pci_header_memory_offset], 0x0
-; mov r8, qword[pci_header_memory]          ;move the base address
-; mov r9, qword[r8+pci_header_memory_offset]   ;base+offset to 
-
-;   mov r15, qword[r9+PCI_CONF_SPACE.vendor_id]     ;extract the device id using the struct
-; ; ; ;mov r15, '#'
-;   mov rdi, r15
-;   call bios_print_hexa
-
-popaq
-ret
 
 
 print_deviceID:
@@ -167,7 +107,7 @@ pushaq
     mov rsi, msg_space
     call video_print
     mov rdi, qword[r15 + PCI_CONF_SPACE.device_id]
-    call bios_print_hexa
+    call video_print_hexa
     mov rsi,newline
     call video_print
 popaq
@@ -182,7 +122,7 @@ pushaq
     mov rsi, msg_space
     call video_print
     mov rdi, qword[r15 + PCI_CONF_SPACE.vendor_id]
-    call bios_print_hexa
+    call video_print_hexa
     mov rsi,newline
     call video_print
 popaq
