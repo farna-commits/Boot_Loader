@@ -1,6 +1,6 @@
 [ORG 0x10000]
 
-
+%define DATABASE_MEMORY_ADDRESS     0xb71b00
 
 
 [BITS 64]
@@ -17,7 +17,7 @@ call video_cls
 mov rsi,msg_scan_device
 call video_print
 here1:
-pushaq
+
 bus_loop:
     device_loop:
         function_loop:
@@ -48,47 +48,48 @@ bus_loop:
             noCopy:
              inc byte [function]
              cmp byte [function],8
-             jne function_loop
+        jne function_loop
 
         inc byte [device]
         mov byte [function],0x0
         cmp byte [device],32
-        jne device_loop
-    inc byte [bus]
-    mov byte [device],0x0
-    cmp byte [bus],255
-    jne bus_loop
+    jne device_loop
 
-    mov qword[pci_header_memory_offset] , 0
-    mov r9, qword[device_counter]
-popaq
+inc byte [bus]
+mov byte [device],0x0
+cmp byte [bus],255
+jne bus_loop
+
+mov qword[pci_header_memory_offset] , 0
+mov r9, qword[device_counter]
+
     
-    ;printing pci details
-    loop6:
-    mov r15, qword[pci_header_memory]
-    add r15, qword[pci_header_memory_offset]
-    mov bl, byte[r15 + PCI_CONF_SPACE.class]
-    cmp bl,1
-    je  ata_found
-    here2:
-    mov rsi,msg_new_device
-    call video_print
-    call print_deviceID
-    call print_vendorID
+;printing pci details
+loop6:
+mov r15, qword[pci_header_memory]
+add r15, qword[pci_header_memory_offset]
+mov bl, byte[r15 + PCI_CONF_SPACE.class]
+cmp bl,1
+je  ata_found
+here2:
+mov rsi,msg_new_device
+call video_print
+call print_deviceID
+call print_vendorID
 
-    add qword[pci_header_memory_offset],256
-    dec r9
-    cmp r9,1
-    je exit3
-    jmp loop6
+add qword[pci_header_memory_offset],256
+dec r9
+cmp r9,1
+je exit3
+jmp loop6
 
-    ata_found:
-    mov rsi, ata_device_msg
-    call video_print
-    jmp here2
-    exit3:
-    mov rsi, msg_finish_scan
-    call video_print
+ata_found:
+mov rsi, ata_device_msg
+call video_print
+jmp here2
+exit3:
+mov rsi, msg_finish_scan
+call video_print
 ;ATA 
 xor rsi,rsi
 mov rsi, msg_start_ata
@@ -109,14 +110,20 @@ channel_loop:
     cmp qword [ata_channel_var],0x4
 jl channel_loop
     
+
+
+mov rsi, newline
+call video_print
+call read_disk_sectors
+
+
 ;initializing idt and pit ticks will start
 xor rsi,rsi
 mov rsi,msg_start_pit
 call video_print
+
 call init_idt
 call setup_idt
-    
-
 kernel_halt: 
     hlt
     jmp kernel_halt
@@ -146,7 +153,13 @@ start_location   dq  0x0  ; A default start position (Line # 8)
     hello_world_str db 'bypassed page table',13, 0  
     msg_finish_scan db ' Scanning done ',13, 0   
     msg_start_pit db 'PIT ticks will start: ',13, 0   
-    msg_start_ata db 'ATA devices details: ',13, 0   
+    msg_start_ata db 'ATA devices details: ',13, 0  
+    msg_found_deviceID1 db 'Found Device ID1 ',13, 0 
+    msg_found_deviceID2 db 'Found Device ID2 ',13, 0 
+    msg_found_deviceID3 db 'FOund ',13, 0 
+    msg_found_deviceID4 db 'Not Found ',13, 0 
+    msg_found_deviceID5 db '#', 13, 0 
+    ;msg_NOTfound_deviceID db 'Didn't Find Device ID ',13, 0
 
     memory_tester_success db 'Memory Tester Succeeded!',13, 0   
     dot db '.'
@@ -162,4 +175,4 @@ start_location   dq  0x0  ; A default start position (Line # 8)
     ALIGN 4
 
 
-;times 8192-($-$$) db 0
+times 65024-($-$$) db 0

@@ -97,7 +97,6 @@ ret
 page_table:
 pushaq
 call get_max   ;get the max type 1 memory that can me mapped, used in PTE loop
-xor r12,r12                     ;for printing the dots
 PML4_loop:        ;this level will create 512 pdt tables to map 512 x 512 x 512 x 2mb = 262tb   
 mov rbx, qword[PDP_ptr]         ;move PDP pointer to rbx
 or rbx, PAGE_PRESENT_WRITE      ;or it to make it page active
@@ -106,6 +105,7 @@ mov qword[rax], rbx         ;let pml4  = pdp ptr value
 mov qword[PDP_counter], 0x0 ;reset the pdp counter
 
      PDP_loop:      ;this level will create 512 x 512 x 2mb = 512gb
+     xor r12,r12                     ;for printing the dots
      mov rbx, qword[PDT_ptr]         ;move pdt pointer to rbx
      or rbx, PAGE_PRESENT_WRITE      ;or it to make it page active
      mov rax, qword[PDP_ptr]         ;move pdp pointre to rax
@@ -143,11 +143,12 @@ mov qword[PDP_counter], 0x0 ;reset the pdp counter
                inc qword[PTE_counter]                     ;counter ++
                cmp qword[PTE_counter], FIVE_TWELVE ;check if counter for PTE reached 512
                jl PTE_loop            ;if still less continue looping 
-          
-          cmp r12,10
-          je dots
+               
           inc r12
+          cmp r12,10
+          je dots          
           after_dots:
+          
 
           ;update cr3
           mov rax, qword[PML4_ptr]

@@ -74,7 +74,7 @@
         mov rcx,rdi
         mov rdi,0x1
         shl rdi,cl
-        not rdi
+        not rdi         ;to unmask
         or rax,rdi
         out dx,eax
 

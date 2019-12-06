@@ -29,14 +29,17 @@ $(BIN)/third_stage.bin: $(SOURCES)/third_stage.asm $(SOURCES)/includes/third_sta
 $(IMAGES)/myos.flp: $(BIN)/first_stage.bin $(BIN)/second_stage.bin $(BIN)/third_stage.bin
 	$(CAT) $(BIN)/first_stage.bin $(BIN)/second_stage.bin $(BIN)/third_stage.bin /dev/zero | $(DD) bs=512 count=2880 of=$(IMAGES)/myos.flp
 
-$(IMAGES)/myos.drv: $(BIN)/first_stage.bin $(BIN)/second_stage.bin $(BIN)/third_stage.bin
-	$(CAT) $(BIN)/first_stage.bin $(BIN)/second_stage.bin $(BIN)/third_stage.bin /dev/zero | $(DD) bs=512 count=61440 of=$(IMAGES)/myos.drv
+$(IMAGES)/myos.drv: $(BIN)/first_stage.bin $(BIN)/second_stage.bin $(BIN)/third_stage.bin database.txt
+	$(CAT) $(BIN)/first_stage.bin $(BIN)/second_stage.bin $(BIN)/third_stage.bin database.txt /dev/zero | $(DD) bs=512 count=61440 of=$(IMAGES)/myos.drv
 
 run_myos: $(IMAGES)/myos.flp
 	$(QEMU) -m 4096 -drive file=$(IMAGES)/myos.flp,format=raw,index=0,if=floppy -drive file=$(IMAGES)/disk0.qcow2,format=qcow2,index=0,media=disk  -drive file=$(IMAGES)/disk1.qcow2,format=qcow2,index=1,media=disk -drive file=$(IMAGES)/disk2.qcow2,format=qcow2,index=2,media=disk -drive file=$(IMAGES)/disk3.qcow2,format=qcow2,index=3,media=disk
 
 run_myos_drv: $(IMAGES)/myos.drv
-	$(QEMU) -m 4096 -drive file=$(IMAGES)/myos.drv,format=raw,index=0,if=floppy -drive file=$(IMAGES)/disk0.qcow2,format=qcow2,index=0,media=disk  -drive file=$(IMAGES)/disk1.qcow2,format=qcow2,index=1,media=disk -drive file=$(IMAGES)/disk2.qcow2,format=qcow2,index=2,media=disk -drive file=$(IMAGES)/disk3.qcow2,format=qcow2,index=3,media=disk
+	$(QEMU) -m 4096 -drive file=$(IMAGES)/myos.drv,format=raw,index=0,media=disk -drive file=$(IMAGES)/disk0.qcow2,format=qcow2,index=1,media=disk  -drive file=$(IMAGES)/disk1.qcow2,format=qcow2,index=2,media=disk -drive file=$(IMAGES)/disk2.qcow2,format=qcow2,index=3,media=disk 
+#deleted last index (4) as the terminal gives the bus doesnt support it 
+#if=drive is wrong
+#if=disk is wrong
 
 clean:
 	rm -rf $(BIN)/* $(IMAGES)/*.flp $(IMAGES)/*.drv

@@ -135,7 +135,7 @@ scroll2:
         inc r14 ;increment both to advance to next character
         inc r15
         inc r12
-        cmp r12, 4000       ;msh 3aref leh msh 3998 (79,24)
+        cmp r12, 4000       
         jl scroll_loop2
         mov qword[start_location], 3840     ;offset to start from the last letter of the last line
         jmp cont2

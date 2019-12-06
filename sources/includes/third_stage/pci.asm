@@ -92,12 +92,6 @@ endstruc
   popaq
   ret
 
-
-
-
-
-
-
 print_deviceID:
 pushaq
     mov rsi, msg_space
@@ -106,7 +100,8 @@ pushaq
     call video_print
     mov rsi, msg_space
     call video_print
-    mov rdi, qword[r15 + PCI_CONF_SPACE.device_id]
+    xor rdi, rdi
+    mov di, word[r15 + PCI_CONF_SPACE.device_id]
     call video_print_hexa
     mov rsi,newline
     call video_print
@@ -121,7 +116,8 @@ pushaq
     call video_print
     mov rsi, msg_space
     call video_print
-    mov rdi, qword[r15 + PCI_CONF_SPACE.vendor_id]
+    xor rdi, rdi
+    mov di, word[r15 + PCI_CONF_SPACE.vendor_id]
     call video_print_hexa
     mov rsi,newline
     call video_print
