@@ -12,7 +12,6 @@
 %define ATA_MASTER_DRV_SELECTOR    0xA0     ; Sent to ATA_REG_HDDEVSEL for master
 %define ATA_SLAVE_DRV_SELECTOR     0xB0     ; sent to ATA_REG_HDDEVSEL for slave
 
-;7a00 
 ; Commands to issue to the controller channels
 %define ATA_CMD_READ_PIO          0x20      ; PIO LBA-28 Read
 %define ATA_CMD_READ_PIO_EXT      0x24      ; PIO LBA-48 Read
@@ -56,9 +55,11 @@
 %define DISK_SECTOR_ADDRESS         137
 %define DATABASE_MEMORY_ADDRESS     0x1400000
 
+
+
 ata_pci_header times 256 db 0  ; A memroy space to store ATA Controller PCI Header (4*256)
-;ata_disks      times 2336 db  0    ;number of sectors
-;ata_disks      times 1195677 db  0    ;number of sectors
+; storing the chars after the conversion in a memory location after the database by 1 mega bytes
+CHAR_CONVERSION_MEMORY_ADDRESS     dq       0x3724f80
 
 ; Indexed values
 ;semi-macros
@@ -73,7 +74,7 @@ ata_error_msg       db "Error Identifying Drive",13,10,0
 ata_identify_msg    db "Found Drive: ",0
 lba_48_supported db 'LBA-48 Supported',0
 
-search_key db '7a1z',0
+search_key db '8086',0
 ata_identify_buffer times 2048 db 0  ; A memroy space to store the 4 ATA devices identify details (4*512)
 ata_identify_buffer_index dw 0x0
 ata_channel db 0
@@ -270,7 +271,6 @@ ata_identify_disk:              ; rdi = channel, rsi = master/slave
         popaq
         ret
 
-
 read_disk_sectors:
 pushaq
 
@@ -411,51 +411,117 @@ mov al,ATA_CMD_READ_PIO                     ;move the write command for LBA28
 out dx,al
 jmp read_loop
 
-
 error:
     ;in case of error
         mov rsi,ata_error_msg                       ;move to rsi the error message to print
         call video_print                            ;call printing function
 
 end1:
+;getting the vendor id
+mov r15, qword[pci_header_memory + PCI_CONF_SPACE.vendor_id]
+;mov r15 ,0x0010
+;add r15, PCI_CONF_SPACE.vendor_id
 
-
-;Database_print_test:
-mov r15, qword[pci_header_memory]
-add r15, PCI_CONF_SPACE.vendor_id
-
-mov r10, 4
+mov r10, 2 ; counter for the following loop (4 chars)
 xor rax, rax
 xor r12, r12
-convert:
+xor r13 , r13 ; offset for the CHAR_CONVERSION_MEMORY_ADDRESS
+convert_to_char:
 mov al, byte[r15]
-cmp al, 9
-jle number
-cont8:
-add byte[r12], al
-dec r10
-cmp r10, 1 
-jge convert
-jmp begin
- number:
-        add al, 48
-        jmp cont8
+;Check upper 4bits then lower 4 bits
 
+
+mov r8b, al
+; mov rdi, r8
+; call video_print_hexa
+and r8b, 1111b ;Get the lower 4 bits
+call check_char ;takes value in r8b and converts it and stores it
+inc r13
+mov r8b, al
+shr r8b, 4 ;Get the upper 4 bits
+call check_char ;takes value in r8b and converts it and stores it
+
+
+cont_convert_to_char:
+inc r15 ; inc r15 by 1 to get the next byte
+inc r13
+;add r13, 8
+dec r10 ; dec counter
+cmp r10, 1 
+jge convert_to_char
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi,  msg_finished_conv ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi,  newline ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi,  msg_char ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi, qword[CHAR_CONVERSION_MEMORY_ADDRESS] ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+; mov rsi, qword[CHAR_CONVERSION_MEMORY_ADDRESS] ; move the vendor id from the memory location to rsi 
+; call video_print ; print it to make sure the conversion was correct
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi,  newline ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+
+
+jmp begin_comparison  ; begin the comparison between the found vendor id (from pci) and the database
+    check_char:
+        pushaq
+        cmp r8b, 9
+        ;cmp al, 9
+        jle number
+        character: ;if not then number is a hexa
+        sub r8b,10 ;make a->0 b->1 c->2 d->3 e->4 f->5
+        add r8b,97 ;add by 97 to get equivalent lower case
+        ; sub al,10 ;make a->0 b->1 c->2 d->3 e->4 f->5
+        ; add al,'a' ;add by 97 to get equivalent lower case
+        jmp next
+        number:
+        add r8b, 48 ; add the ascii of 0
+        ;add al,48 ; add the ascii of 0
+        next:
+        mov byte[CHAR_CONVERSION_MEMORY_ADDRESS+r13], r8b
+        ;mov byte[CHAR_CONVERSION_MEMORY_ADDRESS+r13], al
+        popaq
+        ret
+;------------------------------------------------------------------------------------------------------------------------------;              
 ; mov edi, dword[r15] 
 ; call video_print_hexa
 ;lea rsi, [search_key]
-begin:
-xor rsi, rsi
-mov rsi, r12
-call video_print
-mov rsi, r15
-mov rdi, DATABASE_MEMORY_ADDRESS
+;------------------------------------------------------------------------------------------------------------------------------;              
+
+begin_comparison:
+xor rsi, rsi ; make sure rsi is empty
+mov rsi, msg_begin_comp ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi,  newline ; move the vendor id from the memory location to rsi 
+call video_print ; print it to make sure the conversion was correct
+
+xor rsi, rsi ; make sure rsi is empty
+mov rsi, CHAR_CONVERSION_MEMORY_ADDRESS ; store the vendor id address in rsi 
+mov rdi, DATABASE_MEMORY_ADDRESS ; store the address of the database in rdi ;TEMP COMMENT
+;mov rdi, search_key
+
+
 mov r14, rdi
-add r14, 0x123ef9c
+add r14, 0x123ef9c ; adding the size of the database to its base address (stopping condition)
+
 
 loop2:
 mov rcx,4
-call comp_str
+call comp_str 
 cmp byte[str_found], 0x1
 je found
 inc rdi
@@ -467,15 +533,6 @@ jmp not_found
 comp_str:
 pushaq
         mov byte[str_found],0x0
-        ; mov al,byte[rdi+0x4]
-        ; mov byte[rdi+4],0x0
-        ; push rsi
-        ; mov rsi,rdi
-        ; call video_print
-        ; mov rsi,newline
-        ; call video_print
-        ; mov byte[rdi+0x4],al
-        ; pop rsi
         loop:
             mov rax,rdi
             mov rbx,rsi
@@ -483,102 +540,170 @@ pushaq
             add rbx,rcx
             dec rax
             dec rbx
-            mov dl,byte[rbx]
-            ; cmp dl, 0x9
-            ; jle number 
-            ; cmp dl, 0xF
-            ; jle letter
-            ;cont8:
-            cmp dl,byte[rax]
+            mov dl,byte[rax]
+            cmp dl,byte[rbx]
             jne quit
             dec rcx
             cmp rcx,0
         jne loop
         mov byte[str_found],0x1
         jmp quit
-        ; letter:
-        ; add dl, 65
-        ; jmp cont8
 
         quit:
 popaq
 ret
-; xor r8,r8
-; xor rdi, rdi
-; xor rax, rax
-; add r9, 200
-;     mov r15, qword[pci_header_memory]
-;     add r15, 256
-;     ;mov eax, dword[DATABASE_MEMORY_ADDRESS+r9]
-;     ;mov eax, dword[r15+PCI_CONF_SPACE.device_id]
-;     mov eax, '7a00'
-;     mov edi, DATABASE_MEMORY_ADDRESS ; datbase
-;     mov ecx, 0x123ef9c
-;     ;mov ecx , 0x91f7ce ; original /2
-;     cld
-;     repne scasd
-;     cmp ecx, 0
-    ; je not_found
 
     found:
     xor rax, rax
+    xor rsi, rsi
     mov rsi, msg_found_deviceID3
     call video_print
-    ;printr:
+
+    xor rsi, rsi
+    mov rsi, newline
+    call video_print
+
     xor rsi, rsi
     xor rax, rax
-    mov ax, word[DATABASE_MEMORY_ADDRESS+r9]
-    mov word[rsi], ax
+    mov al,byte[rdi+3]
+    ;mov ax, word[rdi+1]
+    ;mov word[rsi], ax
+    mov byte[rsi], al
     call video_print
-    ;add r9, 4
-    ;cmp r9, 0x123ef9c
-    ;jl printr
+
+    xor rsi, rsi
+    xor rax, rax
+    mov al,byte[rdi+2]
+    ;mov ax, word[rdi+1]
+    ;mov word[rsi], ax
+    mov byte[rsi], al
+    call video_print
+
+    xor rsi, rsi
+    xor rax, rax
+    mov al,byte[rdi+1]
+    ;mov ax, word[rdi+1]
+    ;mov word[rsi], ax
+    mov byte[rsi], al
+    call video_print
+
+    xor rsi, rsi
+    xor rax, rax
+    mov al,byte[rdi]
+    ;mov ax, word[rdi+1]
+    ;mov word[rsi], ax
+    mov byte[rsi], al
+    call video_print
+
+    xor rsi, rsi
+    mov rsi, newline
+    call video_print
+
+
+    xor rsi, rsi
+    mov rsi, newline
+    call video_print    
+
+    xor rsi, rsi
+    xor rax, rax
+    mov rax,vendor_name
+    mov rsi, rax
+    call video_print
+    
+
+    xor rsi, rsi
+    mov rsi, newline
+    call video_print
+
+
+    xor rsi, rsi
+    xor rax, rax
+    mov rax,msg_no_devices
+    mov rsi, rax
+    call video_print
+
+
+    xor rsi, rsi
+    mov rsi, newline
+    call video_print  
+
     jmp EXIT
 
     not_found:
     mov rsi, msg_found_deviceID4
     call video_print
-    xor rsi, rsi 
-    ;mov r15, qword[pci_header_memory]
-    ; mov eax, dword[r15+PCI_CONF_SPACE.device_id]
-    ; ;mov rsi, eax
-    ; call video_print
+    xor rsi, rsi  
     jmp EXIT
+
+    ;loop2:
+; mov rcx,4
+; call comp_str
+; cmp byte[skip_line], 0x1
+; call skipLine
+; cmp byte[str_found], 0x1
+; je found
+; inc rdi
+; cmp rdi,r14
+; jl loop2
+
+; jmp not_found
+
+; comp_str:
+; pushaq
+;         mov byte[str_found],0x0
+;         mov byte[skip_line], 0x0
+;         loop:
+;             mov rax,rdi
+;             mov rbx,rsi
+;             add rax,rcx
+;             add rbx,rcx
+;             dec rax
+;             dec rbx
+;             mov dl,byte[rax]
+;             cmp dl, 10
+;              je check_tab
+;              return:
+;             ; cmp dl, 0xF
+;             ; jle letter
+;             ;cont8:
+;             cmp dl,byte[rbx]
+;             jne quit
+;             dec rcx
+;             cmp rcx,4
+;         jne loop
+;         mov byte[str_found],0x1
+;         jmp quit
+;         check_tab:
+;         inc rax
+;         mov dl, byte[rax]
+;         cmp dl, '   '
+;         je skip 
+;         dec rax
+;         mov dl, byte[rax]
+;         jmp return
+
+;         skip:
+;         mov byte[skip_line], 0x1
+;         popaq
+;         ret
+
+;         quit:
+; popaq
+; ret
+; skipLine:
+; pushaq
+; skiploop:
+;     inc rdi
+;     mov bl, byte[rdi]
+;     cmp bl, 10
+;     jne skiploop
+
+; popaq
+; ret
 
 
 EXIT:
 popaq
 ret
 
-; mov r15, qword[pci_header_memory]
-; add r15, PCI_CONF_SPACE.device_id
 
-; mov rsi,r15
-; mov rdi, DATABASE_MEMORY_ADDRESS
-; mov r14, rdi
-; add r14, 0x123ef9c
-
-; loop:
-; mov rcx,4
-; call compt_str
-; cmp [str_found], 0x1
-; je found
-; inc rdi
-; cmp rdi,r14
-; jl loop
-; jmp not_found
-; comp_str:
-;         mov [str_found],0x0
-;         .loop:
-;             mov rax,rdi
-;             mov rbx,rsi
-;             add rax,rcx
-;             add rbx,rcx
-;             mov dl,byte[rax]
-;             cmp dl,byte[rbx]
-;             jne .quit
-;             dec rcx
-;             cmp rcx,0x0
-;         jne .loop
-;         mov [str_found],0x1
-;         .quit:

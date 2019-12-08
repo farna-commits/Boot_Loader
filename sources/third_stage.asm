@@ -1,7 +1,5 @@
 [ORG 0x10000]
 
-%define DATABASE_MEMORY_ADDRESS     0xb71b00
-
 
 [BITS 64]
 
@@ -9,6 +7,10 @@
 
 Kernel:
 call video_cls
+
+mov rsi,msg_map
+call video_print
+
 call page_table         ;call page table function
 
 call video_cls
@@ -74,6 +76,7 @@ je  ata_found
 here2:
 mov rsi,msg_new_device
 call video_print
+
 call print_deviceID
 call print_vendorID
 
@@ -90,6 +93,10 @@ jmp here2
 exit3:
 mov rsi, msg_finish_scan
 call video_print
+
+mov rsi, newline
+call video_print
+
 ;ATA 
 xor rsi,rsi
 mov rsi, msg_start_ata
@@ -110,12 +117,14 @@ channel_loop:
     cmp qword [ata_channel_var],0x4
 jl channel_loop
     
-
-
 mov rsi, newline
 call video_print
+
 call read_disk_sectors
 
+xor rsi,rsi
+mov rsi, newline
+call video_print
 
 ;initializing idt and pit ticks will start
 xor rsi,rsi
@@ -151,15 +160,23 @@ end_of_string  db 13        ; The end of the string indicator
 start_location   dq  0x0  ; A default start position (Line # 8)
 
     hello_world_str db 'bypassed page table',13, 0  
+    msg_map db 'Mapping the memory:',13, 0  
     msg_finish_scan db ' Scanning done ',13, 0   
     msg_start_pit db 'PIT ticks will start: ',13, 0   
-    msg_start_ata db 'ATA devices details: ',13, 0  
+    msg_start_ata db 'ATA devices details: ',13, 0 
+
+    msg_finished_conv db 'Finished Char Conversion', 13, 0 
+    msg_char    db '    The Hexa will be :', 13, 0 
+    msg_begin_comp    db 'Reading disk sectors: ', 13, 0 
+    msg_comp_str    db '    Begin Comp_str ', 13, 0 
+
     msg_found_deviceID1 db 'Found Device ID1 ',13, 0 
     msg_found_deviceID2 db 'Found Device ID2 ',13, 0 
-    msg_found_deviceID3 db 'FOund ',13, 0 
+    msg_found_deviceID3 db 'Found Vendor: ',13, 0 
+    vendor_name db 'Intel Corporation ',13, 0
+    msg_no_devices db 'Couldnt find devices, search the updated database at https://pci-ids.ucw.cz/ ',13, 0
     msg_found_deviceID4 db 'Not Found ',13, 0 
     msg_found_deviceID5 db '#', 13, 0 
-    ;msg_NOTfound_deviceID db 'Didn't Find Device ID ',13, 0
 
     memory_tester_success db 'Memory Tester Succeeded!',13, 0   
     dot db '.'
